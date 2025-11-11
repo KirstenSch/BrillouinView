@@ -1,0 +1,8 @@
+# Git ignore fpor venv files
+.venv/*
+
+# Git ignore for *.lock files
+*.lock
+
+# Git ignore for Python cache files
+__pycache__/*
