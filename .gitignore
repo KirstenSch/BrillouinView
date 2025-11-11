@@ -5,4 +5,5 @@
 *.lock
 
 # Git ignore for Python cache files
-__pycache__/*
+**/__pycache__/*
+.pytest_cache/*
