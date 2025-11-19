@@ -48,7 +48,7 @@ import matplotlib
 matplotlib.use('TkAgg')
 from scipy.interpolate import interp1d
 
-from src.fitting_functions import gaussian, lorentzian, voigt, pseudo_voigt, _2gaussian, _2lorentzian, _2voigt, _2pseudovoigt
+from brillouinview.fitting_functions import gaussian, lorentzian, voigt, pseudo_voigt, _2gaussian, _2lorentzian, _2voigt, _2pseudovoigt
 
 root = tk.Tk()
 root.geometry("800x1200")
