@@ -1,0 +1,4 @@
+para_PS: 5.0
+para_lambda: 532.2
+para_theta: 50.1
+average_BS_shift: 468.75

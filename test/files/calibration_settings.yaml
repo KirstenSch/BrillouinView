@@ -1,0 +1,13 @@
+---
+experimental settings:
+  calibration_settings:
+    scattering_angle: 90
+    scattering_angle_unc: 1
+    wavelength: 532
+    wavelength_unc: 0.1
+    spacing: 0.85
+    spacing_unc: 0.02
+    calibration_factor: 123.45
+    calibration_factor_unc: 0.67
+  data_settings:
+    number_of_spectra: 10
