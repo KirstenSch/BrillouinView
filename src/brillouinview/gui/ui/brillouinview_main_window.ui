@@ -265,7 +265,15 @@
         <item>
          <layout class="QVBoxLayout" name="tab_calibration_center">
           <item>
-           <widget class="QGraphicsView" name="load"/>
+           <widget class="PlotWidget" name="graph" native="true">
+            <property name="minimumSize">
+             <size>
+              <width>0</width>
+              <height>300</height>
+             </size>
+            </property>
+            <layout class="QVBoxLayout" name="verticalLayout"/>
+           </widget>
           </item>
          </layout>
         </item>
@@ -363,6 +371,14 @@
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
  </widget>
+ <customwidgets>
+  <customwidget>
+   <class>PlotWidget</class>
+   <extends>QWidget</extends>
+   <header location="global">pyqtgraph</header>
+   <container>1</container>
+  </customwidget>
+ </customwidgets>
  <resources/>
  <connections/>
 </ui>

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Form implementation generated from reading ui file 'src/ui/brillouinview_main_window.ui'
+# Form implementation generated from reading ui file 'src/brillouinview/gui/ui/brillouinview_main_window.ui'
 #
 # Created by: PyQt5 UI code generator 5.15.11
 #
@@ -144,9 +144,12 @@ class Ui_MainWindow(object):
         self.verticalLayout_3.addLayout(self.tab_calibration_top)
         self.tab_calibration_center = QtWidgets.QVBoxLayout()
         self.tab_calibration_center.setObjectName("tab_calibration_center")
-        self.load = QtWidgets.QGraphicsView(self.tab_calibration)
-        self.load.setObjectName("load")
-        self.tab_calibration_center.addWidget(self.load)
+        self.graph = PlotWidget(self.tab_calibration)
+        self.graph.setMinimumSize(QtCore.QSize(0, 300))
+        self.graph.setObjectName("graph")
+        self.verticalLayout = QtWidgets.QVBoxLayout(self.graph)
+        self.verticalLayout.setObjectName("verticalLayout")
+        self.tab_calibration_center.addWidget(self.graph)
         self.verticalLayout_3.addLayout(self.tab_calibration_center)
         self.tab_calibration_bottom = QtWidgets.QVBoxLayout()
         self.tab_calibration_bottom.setObjectName("tab_calibration_bottom")
@@ -240,3 +243,4 @@ class Ui_MainWindow(object):
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_stack), _translate("MainWindow", "Stack"))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_elasticproperties), _translate("MainWindow", "Elastic Properties"))
         self.menuHelp.setTitle(_translate("MainWindow", "Help"))
+from pyqtgraph import PlotWidget
