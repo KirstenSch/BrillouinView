@@ -108,6 +108,60 @@ def test_read_ghost_file():
     assert len(df) > 100
 
 
+def test_real_calibration_fit(tmp_path):
+    # Test fitting on real calibration data
+    ghost_file = Path("test/files/calibration.DAT")
+    df, header = read_ghost_file(ghost_file)
+
+    # Fit five peaks 
+    results = fit_peaks(df, n_peaks=5, column="intensity")
+
+    # Step 4: Create data from the combined fit_peaks output
+    y_fitted = results['fitted_curve']
+    fitted_params = sorted(results['params'], key=lambda p: p['center'])
+
+    # Step 5: Plot both input and fit_peaks output
+    fig1, (ax2, ax3) = plt.subplots(2, 1, figsize=(12, 10))
+    
+    # Main comparison plot
+    ax2.plot(list(df.index), list(df['intensity']), 'b-', linewidth=2, alpha=0.7, label='Input data')
+    ax2.plot(results['x_values'], y_fitted, 'r--', linewidth=2, label='Fitted output')
+    
+    # Plot individual fitted dips
+    baseline = results['baseline']
+    x = results['x_values']
+      # baseline is first param 
+    for i, peak in enumerate(fitted_params, 1):
+        individual_fit = baseline + gaussian(x, peak['amplitude'], peak['center'], peak['sigma'])
+        ax2.plot(x, individual_fit, linestyle=':', linewidth=1.5, 
+                label=f'Fitted dip {i} (center={peak["center"]:.2f})')
+    
+    ax2.axhline(y=baseline, color='gray', linestyle='--', alpha=0.3, label='Baseline')
+    ax2.set_xlabel('X')
+    ax2.set_ylabel('Intensity')
+    ax2.set_title(f'Step 5: Input vs Fitted Output (R² = {results["r_squared"]:.4f})')
+    ax2.legend()
+    ax2.grid(True, alpha=0.3)
+    
+    # Residuals
+    ax3.plot(results['x_values'], results['residuals'], 'g-', alpha=0.6, linewidth=1)
+    ax3.axhline(y=0, color='k', linestyle='--', alpha=0.3)
+    ax3.set_xlabel('X')
+    ax3.set_ylabel('Residuals')
+    ax3.set_title('Fitting Residuals')
+    ax3.grid(True, alpha=0.3)
+    
+    plt.tight_layout()
+    plt.savefig(tmp_path / 'calibration_real_data_fit.png', dpi=150)
+    plt.close()
+
+    # Check that we found five peaks
+    assert len(results["params"]) == 5
+
+    # Check R² value
+    assert results["r_squared"] > 0.95
+
+
 def test_two_random_dips_workflow(tmp_path):
         """Complete workflow: generate random dips, fit, compare parameters."""
         np.random.seed(123)  # For reproducibility
