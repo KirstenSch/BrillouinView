@@ -3,12 +3,18 @@
 import pytest
 import numpy as np
 from scipy.special import wofz
+import pandas as pd
+import matplotlib.pyplot as plt
+from pathlib import Path
 
 from brillouinview.fitting_functions import gaussian, lorentzian, voigt
 # Test reading calibration settings from a file
 from brillouinview.calibration import ExperimentSetup
-from brillouinview.io_fileparsing import experiment_setup_calibration
-from pathlib import Path
+from brillouinview.io_fileparsing import experiment_setup_calibration, read_ghost_file
+from brillouinview.fitting_algorithm import fit_peaks, gaussian
+
+
+from brillouinview.fitting_algorithm import fit_peaks
 
 def test_gaussian():
     # Test the Gaussian fitting function
@@ -76,3 +82,151 @@ def test_calibration_settings_read_yaml():
     assert experimental_setup.spacing_unc == 0.02
     assert experimental_setup.calibration_factor == 123.45         
     assert experimental_setup.calibration_factor_unc == 0.67
+
+
+def test_read_ghost_file():
+    # Read legacy Ghost Spectrum file and check header + data
+    ghost_file = Path("test/files/calibration.DAT")
+    df, header = read_ghost_file(ghost_file)
+
+    # basic types
+    assert hasattr(df, "shape")
+    assert isinstance(header, dict)
+
+    # header contents parsed correctly
+    assert header.get("file_type") == "Ghost Spectrum File"
+    assert header.get("Scan number") == 29
+    assert header.get("Wavelength") == 532
+    assert header.get("Sample") is None
+    assert header.get("Mirror sp.") == 15
+    assert abs(header.get("Ch. duration") - 0.029) < 1e-12
+
+    # data contents
+    assert "intensity" in df.columns
+    assert int(df["intensity"].iloc[0]) == 23221
+    assert int(df["intensity"].iloc[1]) == 27014
+    assert len(df) > 100
+
+
+def test_two_random_dips_workflow(tmp_path):
+        """Complete workflow: generate random dips, fit, compare parameters."""
+        np.random.seed(123)  # For reproducibility
+        
+        # Step 1: Generate two random Gaussian dips with negative amplitude
+        x = np.linspace(0, 10, 500)
+        baseline = 100  # Raised baseline
+        
+        # Random parameters for two dips
+        amp1 = -np.random.uniform(20, 40)  # Negative amplitude (dip depth)
+        center1 = np.random.uniform(2, 4)
+        sigma1 = np.random.uniform(0.3, 0.6)
+        
+        amp2 = -np.random.uniform(25, 45)
+        center2 = np.random.uniform(6, 8)
+        sigma2 = np.random.uniform(0.4, 0.7)
+        
+        true_params = [
+            (amp1, center1, sigma1),
+            (amp2, center2, sigma2)
+        ]
+        
+        # Create combined function with raised baseline
+        y_input = baseline + gaussian(x, amp1, center1, sigma1) + gaussian(x, amp2, center2, sigma2)
+        
+        # Ensure all values are positive
+        assert np.all(y_input > 0), "All values should be positive with raised baseline"
+        
+        # Step 2: Plot the input data
+        fig1, ax1 = plt.subplots(figsize=(10, 6))
+        ax1.plot(x, y_input, 'b-', linewidth=2, label='Input: Combined dips')
+        ax1.axhline(y=baseline, color='gray', linestyle='--', alpha=0.5, label='Baseline')
+        
+        # Plot individual input dips
+        ax1.plot(x, baseline + gaussian(x, amp1, center1, sigma1), 'g--', 
+                alpha=0.6, label=f'Dip 1 (center={center1:.2f})')
+        ax1.plot(x, baseline + gaussian(x, amp2, center2, sigma2), 'orange', 
+                linestyle='--', alpha=0.6, label=f'Dip 2 (center={center2:.2f})')
+        
+        ax1.set_xlabel('X')
+        ax1.set_ylabel('Intensity')
+        ax1.set_title('Step 2: Input Data - Two Random Dips on Raised Baseline')
+        ax1.legend()
+        ax1.grid(True, alpha=0.3)
+        plt.tight_layout()
+        plt.savefig(tmp_path / 'step2_input_data.png', dpi=150)
+        plt.close()
+        
+        # Step 3: Use combined data as input for fit_peaks
+        df = pd.DataFrame({'intensities': y_input}, index=x)
+        results = fit_peaks(df, n_peaks=2)
+        
+        # Step 4: Create data from the combined fit_peaks output
+        y_fitted = results['fitted_curve']
+        fitted_params = sorted(results['params'], key=lambda p: p['center'])
+        
+        # Step 5: Plot both input and fit_peaks output
+        fig2, (ax2, ax3) = plt.subplots(2, 1, figsize=(12, 10))
+        
+        # Main comparison plot
+        ax2.plot(x, y_input, 'b-', linewidth=2, alpha=0.7, label='Input data')
+        ax2.plot(results['x_values'], y_fitted, 'r--', linewidth=2, label='Fitted output')
+        
+        # Plot individual fitted dips
+        for i, peak in enumerate(fitted_params, 1):
+            individual_fit = baseline + gaussian(x, peak['amplitude'], peak['center'], peak['sigma'])
+            ax2.plot(x, individual_fit, linestyle=':', linewidth=1.5, 
+                    label=f'Fitted dip {i} (center={peak["center"]:.2f})')
+        
+        ax2.axhline(y=baseline, color='gray', linestyle='--', alpha=0.3, label='Baseline')
+        ax2.set_xlabel('X')
+        ax2.set_ylabel('Intensity')
+        ax2.set_title(f'Step 5: Input vs Fitted Output (R² = {results["r_squared"]:.4f})')
+        ax2.legend()
+        ax2.grid(True, alpha=0.3)
+        
+        # Residuals
+        ax3.plot(results['x_values'], results['residuals'], 'g-', alpha=0.6, linewidth=1)
+        ax3.axhline(y=0, color='k', linestyle='--', alpha=0.3)
+        ax3.set_xlabel('X')
+        ax3.set_ylabel('Residuals')
+        ax3.set_title('Fitting Residuals')
+        ax3.grid(True, alpha=0.3)
+        
+        plt.tight_layout()
+        plt.savefig(tmp_path / 'step5_comparison.png', dpi=150)
+        plt.close()
+        
+        # Step 6: Compare parameters - they should be close
+        print("\n" + "="*60)
+        print("Parameter Comparison:")
+        print("="*60)
+        
+        # Sort true params by center for comparison
+        true_params_sorted = sorted(true_params, key=lambda p: p[1])
+        
+        for i, (true, fitted) in enumerate(zip(true_params_sorted, fitted_params), 1):
+            true_amp, true_center, true_sigma = true
+            
+            print(f"\nDip {i}:")
+            print(f"  Center:    True={true_center:.3f}, Fitted={fitted['center']:.3f}, "
+                  f"Error={abs(fitted['center'] - true_center):.3f}")
+            print(f"  Amplitude: True={true_amp:.3f}, Fitted={fitted['amplitude']:.3f}, "
+                  f"Error={abs(fitted['amplitude'] - true_amp):.3f}")
+            print(f"  Sigma:     True={true_sigma:.3f}, Fitted={fitted['sigma']:.3f}, "
+                  f"Error={abs(fitted['sigma'] - true_sigma):.3f}")
+            
+            # Assertions - parameters should be close
+            assert abs(fitted['center'] - true_center) < 0.2, \
+                f"Center mismatch for dip {i}: {fitted['center']:.3f} vs {true_center:.3f}"
+            assert abs(fitted['amplitude'] - true_amp) < 5.0, \
+                f"Amplitude mismatch for dip {i}: {fitted['amplitude']:.3f} vs {true_amp:.3f}"
+            assert abs(fitted['sigma'] - true_sigma) < 0.2, \
+                f"Sigma mismatch for dip {i}: {fitted['sigma']:.3f} vs {true_sigma:.3f}"
+        
+        # Overall fit quality
+        assert results['r_squared'] > 0.99, \
+            f"R² too low: {results['r_squared']:.4f}, should be > 0.99"
+        
+        print(f"\nR² = {results['r_squared']:.6f}")
+        print("="*60)
+        print("✓ All parameters match within tolerance!")
