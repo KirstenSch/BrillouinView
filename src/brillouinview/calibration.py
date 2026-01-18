@@ -1,4 +1,6 @@
 from dataclasses import dataclass
+from pathlib import Path
+import numpy as np
 
 @dataclass
 class ExperimentSetup:
@@ -9,6 +11,7 @@ class ExperimentSetup:
     spacing: float = 5.0
     spacing_unc: float = 0.1
     calibration_factor: float = 468.75
-    calibration_factor_unc: float = 1.0
-
-   
+    calibration_factor_unc: float = np.nan
+    calibration_file_path: Path = Path()
+    calibration_peak_number: int = np.nan
+    calibration_peak_function: str = "" # e.g., "Gaussian", "Lorentzian"

@@ -16,7 +16,7 @@ def multi_gaussian(x, *params):
     First parameter is the constant baseline offset.
     """
     baseline = params[0]
-    y = np.full_like(x, baseline)
+    y = np.full_like(x, baseline, dtype=float)
     
     for i in range(1, len(params), 3):
         y += gaussian(x, params[i], params[i + 1], params[i + 2])
