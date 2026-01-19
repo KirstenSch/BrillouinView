@@ -10,7 +10,7 @@ from brillouinview.fitting_algorithm import fit_peaks
 import pyqtgraph as pg
 from PyQt5.QtCore import Qt
 from brillouinview.fitting_functions import gaussian
-
+from brillouinview.helping_functions import nominal
 class ExperimentSetupWindow(QDialog):
     sig = pyqtSignal(object)
     def __init__(self, experiment_setup: ExperimentSetup):
@@ -106,7 +106,15 @@ class CalibrationFitWindow(QDialog):
 
 
     def apply_calibration_fit(self):
-        checked_peaks_parameters = self.get_checked_peak_params()
+        if len(self.get_checked_peak_params()) < 2:
+            QMessageBox.warning(self, "Warning", 
+                            "At least two dips must be selected for calibration.")
+            return
+
+        self.experiment_setup.calibration_peak_parameters = self.get_checked_peak_params()
+        self.experiment_setup.calibration_peak_function = self.ui_calplot.le_used_function.text()
+        self.experiment_setup.calibration_background = self.results.get('baseline', 0.0)
+        self.sig.emit(self.experiment_setup)
         self.close()
 
     def populate_fit_results_table(self, use_checkbox=True):
@@ -135,7 +143,7 @@ class CalibrationFitWindow(QDialog):
         num_peaks = len(params)
         if num_peaks != self.peak_number:
             QMessageBox.warning(self, "Warning", 
-                            f"Number of fitted peaks ({num_peaks}) does not match expected number ({self.peak_number}).")
+                            f"Number of fitted dips ({num_peaks}) does not match expected number ({self.peak_number}).")
         
         num_params = len(param_names)
         
@@ -147,7 +155,7 @@ class CalibrationFitWindow(QDialog):
             self.ui_calplot.tableWidget.setColumnCount(num_params + 1)
         
         # Set column headers
-        headers = ['Peak'] + param_names
+        headers = ['Dip'] + param_names
         if use_checkbox:
             headers += ['Use for Calibration']
         self.ui_calplot.tableWidget.setHorizontalHeaderLabels(headers)
@@ -155,7 +163,7 @@ class CalibrationFitWindow(QDialog):
         # Populate table with data
         for row, peak_params in enumerate(params):
             # Peak number column
-            peak_item = QTableWidgetItem(f"Peak {row + 1}")
+            peak_item = QTableWidgetItem(f"Dip {row + 1}")
             peak_item.setTextAlignment(Qt.AlignCenter)
             self.ui_calplot.tableWidget.setItem(row, 0, peak_item)
             
@@ -248,8 +256,9 @@ class CalibrationFitWindow(QDialog):
 
         x_values = self.results.get("x_values")
         y_fitted = self.results.get("fitted_curve")
-        baseline = self.results.get("baseline", 0.0)
-        params = sorted(self.results.get("params", []), key=lambda p: p.get("center", 0))
+        # If baseline is a ufloat, use its nominal value for plotting
+        baseline = nominal(self.results.get("baseline", 0.0))
+        params = sorted(self.results.get("params", []), key=lambda p: nominal(p.get("center", 0)))
 
         # Overall fitted curve (red dashed)
         if x_values is not None and y_fitted is not None:
@@ -267,10 +276,10 @@ class CalibrationFitWindow(QDialog):
 
         # Individual fitted dips
         for i, peak in enumerate(params, start=1):
-            amp = peak.get("amplitude", 0.0)
-            cen = peak.get("center", 0.0)
-            sig = peak.get("sigma", 1.0)
-            
+            amp = nominal(peak.get("amplitude", 0.0))
+            cen = nominal(peak.get("center", 0.0))
+            sig = nominal(peak.get("sigma", 1.0))
+
             x_for_fit = x_values if x_values is not None else self.calibration_data.index.values
             individual = baseline + gaussian(x_for_fit, amp, cen, sig)
             color = pg.intColor(i, hues=max(len(params) + 1, 6))
