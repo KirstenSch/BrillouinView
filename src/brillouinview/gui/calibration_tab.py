@@ -11,6 +11,7 @@ import pyqtgraph as pg
 from PyQt5.QtCore import Qt
 from brillouinview.fitting_functions import gaussian
 from brillouinview.helping_functions import nominal
+
 class ExperimentSetupWindow(QDialog):
     sig = pyqtSignal(object)
     def __init__(self, experiment_setup: ExperimentSetup):
@@ -189,6 +190,21 @@ class CalibrationFitWindow(QDialog):
         
         # Optional: Resize columns to content
         self.ui_calplot.tableWidget.resizeColumnsToContents()
+        
+        # Connect itemChanged signal to update plot when checkboxes change
+        self.ui_calplot.tableWidget.itemChanged.connect(self.update_plot_on_checkbox)
+
+    def update_plot_on_checkbox(self, item):
+        """
+        Update the plot when a checkbox is toggled.
+        Only redraws the plot if a checkbox was changed.
+        """
+        # Check if the changed item is in the checkbox column
+        num_cols = self.ui_calplot.tableWidget.columnCount()
+        checkbox_col = num_cols - 1
+        
+        if item.column() == checkbox_col:
+            self.plot_data()
 
     def get_checked_peak_params(self):
         """
@@ -219,6 +235,32 @@ class CalibrationFitWindow(QDialog):
         # Return only the params for checked peaks
         return [params[i] for i in checked_indices if i < len(params)]
 
+    def get_checked_peak_indices(self):
+        """
+        Get the indices of peaks that are checked for calibration.
+        
+        Returns:
+        --------
+        list of int
+            List of indices for checked peaks.
+        """
+        num_rows = self.ui_calplot.tableWidget.rowCount()
+        num_cols = self.ui_calplot.tableWidget.columnCount()
+        
+        if num_rows == 0 or num_cols == 0:
+            return []
+        
+        # The checkbox column is the last column
+        checkbox_col = num_cols - 1
+        checked_indices = []
+        
+        for row in range(num_rows):
+            checkbox_item = self.ui_calplot.tableWidget.item(row, checkbox_col)
+            if checkbox_item is not None and checkbox_item.checkState() == Qt.Checked:
+                checked_indices.append(row)
+        
+        return checked_indices
+
     def plot_data(self):
         # Plot the calibration data
         self.ui_calplot.fit_plot.clear()
@@ -228,7 +270,7 @@ class CalibrationFitWindow(QDialog):
             pen=pg.mkPen('black', width=1.5) 
         )
 
-    # Get the current x-range and extend it by 10% on the right
+        # Get the current x-range and extend it by 10% on the right
         try:
             plot_item = self.ui_calplot.fit_plot.getPlotItem()
             x_min = self.calibration_data.index.min()
@@ -260,6 +302,9 @@ class CalibrationFitWindow(QDialog):
         baseline = nominal(self.results.get("baseline", 0.0))
         params = sorted(self.results.get("params", []), key=lambda p: nominal(p.get("center", 0)))
 
+        # Get checked peak indices
+        checked_indices = self.get_checked_peak_indices()
+
         # Overall fitted curve (red dashed)
         if x_values is not None and y_fitted is not None:
             pen_fit = pg.mkPen(color='r', width=2, style=Qt.DashLine)
@@ -283,7 +328,16 @@ class CalibrationFitWindow(QDialog):
             x_for_fit = x_values if x_values is not None else self.calibration_data.index.values
             individual = baseline + gaussian(x_for_fit, amp, cen, sig)
             color = pg.intColor(i, hues=max(len(params) + 1, 6))
-            pen_peak = pg.mkPen(color=color, width=1.5, style=Qt.DotLine)
+            
+            # Check if this peak is checked (i-1 because enumerate starts at 1)
+            is_checked = (i - 1) in checked_indices
+            
+            # Use solid line with width=3 if checked, dotted line with width=1.5 if not
+            if is_checked:
+                pen_peak = pg.mkPen(color=color, width=3, style=Qt.SolidLine)
+            else:
+                pen_peak = pg.mkPen(color=color, width=1.5, style=Qt.DotLine)
+            
             handle = self.ui_calplot.fit_plot.plot(
                 x_for_fit,
                 individual,
