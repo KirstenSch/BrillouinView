@@ -49,8 +49,12 @@ class ExperimentSetupWindow(QDialog):
     def update_experiment_setup(self):
         self.new_experiment_setup_data = self.read_all_fields()
         if self.sanitiy_check():
-            new_experiment_setup = ExperimentSetup(**self.new_experiment_setup_data)
-            self.sig.emit(new_experiment_setup)
+            # Update only provided fields on the existing ExperimentSetup instance
+            for key, value in self.new_experiment_setup_data.items():
+                if value is not None and hasattr(self.current_experiment_setup, key):
+                    setattr(self.current_experiment_setup, key, value)
+            
+            self.sig.emit(self.current_experiment_setup)
             self.close()
 
     def sanitiy_check(self):

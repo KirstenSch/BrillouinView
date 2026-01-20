@@ -51,8 +51,26 @@ class BrillouinViewApp(QMainWindow):
             QMessageBox.critical(self, "Error", "The chosen file does not exist.")
             return
             
-        self.experiment_setup = experiment_setup_calibration(file_path)  
+        experiment_setup_read = experiment_setup_calibration(file_path)  
         
+        # Copy all public attributes from the loaded ExperimentSetup into the current one,
+        # leaving any attributes that aren't present in the loaded object unchanged.
+        if hasattr(experiment_setup_read, "__dict__"):
+            for key, val in vars(experiment_setup_read).items():
+                setattr(self.experiment_setup, key, val)
+        else:
+            for attr in dir(experiment_setup_read):
+                if attr.startswith("_"):
+                    continue
+                try:
+                    val = getattr(experiment_setup_read, attr)
+                except AttributeError:
+                    continue
+                if callable(val):
+                    continue
+                setattr(self.experiment_setup, attr, val)
+        
+
         self.open_subwindow_experiment_setup()
 
     def open_subwindow_experiment_setup(self):
