@@ -13,10 +13,11 @@ from brillouinview.fitting_functions import gaussian
 from brillouinview.helping_functions import nominal
 
 class ExperimentSetupWindow(QDialog):
-    sig = pyqtSignal(object)
+    sig = pyqtSignal(object, float)
     def __init__(self, experiment_setup: ExperimentSetup):
         super().__init__()
         self.current_experiment_setup = experiment_setup
+        self.prev_laser = experiment_setup.laser_wavelength
         self.ui = Ui_EditCalibrationSettings()
         self.ui.setupUi(self)
         self.ui_fields_dict = {
@@ -54,10 +55,11 @@ class ExperimentSetupWindow(QDialog):
                 if value is not None and hasattr(self.current_experiment_setup, key):
                     setattr(self.current_experiment_setup, key, value)
             
-            self.sig.emit(self.current_experiment_setup)
+            self.sig.emit(self.current_experiment_setup, self.prev_laser)
             self.close()
 
     def sanitiy_check(self):
+        # Todo: implement sanity checks here
         return True
 
     def read_all_fields(self):
@@ -68,6 +70,7 @@ class ExperimentSetupWindow(QDialog):
                 data[key] = meta["type"](text)
             except ValueError:
                 data[key] = None
+
         return data
     
     def closeEvent(self, event):
