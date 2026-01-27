@@ -5,7 +5,7 @@ from scipy.signal import find_peaks
 from uncertainties import correlated_values, ufloat
 
 
-def gaussian(x, amplitude, center, sigma):
+def gaussian(x, amplitude:float, center:float, sigma:float):
     """Single Gaussian peak function."""
     return amplitude * np.exp(-((x - center) ** 2) / (2 * sigma ** 2))
 
