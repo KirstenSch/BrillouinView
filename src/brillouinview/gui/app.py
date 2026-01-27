@@ -52,7 +52,6 @@ class BrillouinViewApp(QMainWindow):
             return
             
         experiment_setup_read = experiment_setup_calibration(file_path)  
-        prev_laser = self.experiment_setup.laser_wavelength
 
         # Copy all public attributes from the loaded ExperimentSetup into the current one,
         # leaving any attributes that aren't present in the loaded object unchanged.
@@ -71,7 +70,6 @@ class BrillouinViewApp(QMainWindow):
                     continue
                 setattr(self.experiment_setup, attr, val)
         
-        self.calibration_recalc_allert(prev_laser, self.experiment_setup.laser_wavelength)
         self.open_subwindow_experiment_setup()
 
     def open_subwindow_experiment_setup(self):
@@ -80,7 +78,7 @@ class BrillouinViewApp(QMainWindow):
         self.sub.show()
 
 
-    def apply_new_setup(self, new_setup, prev_laser):
+    def apply_new_setup(self, new_setup):
         ui_fields_dict = {
             "scattering_angle": {"widget": self.ui.le_angle, "type": float},
             "scattering_angle_unc": {"widget": self.ui.le_angle_unc, "type": float},
@@ -103,21 +101,6 @@ class BrillouinViewApp(QMainWindow):
             line_edit: QLineEdit = meta["widget"]
             line_edit.setText(str(value))
 
-                # Check if laser wavelength changed while a calibration fit exists
-
-        self.calibration_recalc_allert(prev_laser, self.experiment_setup.laser_wavelength)
-
-    def calibration_recalc_allert(self, prev_laser, new_laser):
-        if self.ui.button_run_calibration.isEnabled() and prev_laser != new_laser:
-            if isinstance(new_laser, (float, int)):
-                self.calculate_calibration()
-                QMessageBox.information(self, "Info", "Laser wavelength has been changed while a calibration fit exists. Calibration factor has been re-calculated.")
-            else:
-                QMessageBox.information(self, "Info", "Laser wavelength has been cleared. The calibration factor can not be calculated until a valid wavelength is provided.")
-                self.experiment_setup.calibration_factor = None
-                self.experiment_setup.calibration_factor_unc = None
-                self.ui.le_calibration.clear()
-                self.ui.le_calibration_unc.clear()
 
     def load_calibration_data(self):
         working_dir = str(Path.cwd().absolute())
