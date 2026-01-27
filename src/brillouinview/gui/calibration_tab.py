@@ -27,8 +27,8 @@ class ExperimentSetupWindow(QDialog):
             "laser_wavelength_unc": {"widget": self.ui.le_wavelength_unc, "type": float},
             "spacing": {"widget": self.ui.le_spacing, "type": float},
             "spacing_unc": {"widget": self.ui.le_spacing_unc, "type": float},
-            "calibration_factor": {"widget": self.ui.le_calibration, "type": float},
-            "calibration_factor_unc": {"widget": self.ui.le_calibration_unc, "type": float},
+            "calibration_value": {"widget": self.ui.le_calibration, "type": float},
+            "calibration_value_unc": {"widget": self.ui.le_calibration_unc, "type": float},
         }
         self.populate_fields()
         self.set_double_validator()

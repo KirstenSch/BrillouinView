@@ -88,8 +88,8 @@ class BrillouinViewApp(QMainWindow):
             "laser_wavelength_unc": {"widget": self.ui.le_wavelength_unc, "type": float},
             "spacing": {"widget": self.ui.le_spacing, "type": float},
             "spacing_unc": {"widget": self.ui.le_spacing_unc, "type": float},
-            "calibration_factor": {"widget": self.ui.le_calibration, "type": float},
-            "calibration_factor_unc": {"widget": self.ui.le_calibration_unc, "type": float},
+            "calibration_value": {"widget": self.ui.le_calibration, "type": float},
+            "calibration_value_unc": {"widget": self.ui.le_calibration_unc, "type": float},
         }
         
         # Update only the specified fields from new_setup to experiment_setup
@@ -221,19 +221,7 @@ class BrillouinViewApp(QMainWindow):
             )
 
     def calculate_calibration(self):
-    
-        # Validate laser wavelength
-        if not isinstance(self.experiment_setup.laser_wavelength, (float, int)) or \
-        not isinstance(self.experiment_setup.laser_wavelength_unc, (float, int)):
-            QMessageBox.critical(self, "Error", "Laser wavelength must be a positive number and have an uncertainty.")
-            self.open_subwindow_experiment_setup()
-            return
-        
-        laser_wavelength = ufloat(
-            self.experiment_setup.laser_wavelength,
-            self.experiment_setup.laser_wavelength_unc
-        )
-        
+       
         # Extract center values
         centers = [param['center'] for param in self.experiment_setup.calibration_peak_parameters]
         # Calculate delta_channel based on number of peaks
@@ -241,20 +229,18 @@ class BrillouinViewApp(QMainWindow):
             delta_channel = np.abs(centers[1] - centers[0])
         elif len(centers) == 3:
             # Average of all pairwise distances
-            delta_channel = (np.abs(centers[1] - centers[0]) + 
-                            np.abs(centers[2] - centers[1]) + 
-                            (np.abs(centers[2] - centers[0]))/2) / 3
+            delta_channel = (np.abs(centers[1] - centers[0]) * 2 + 
+                            np.abs(centers[2] - centers[1]) * 2 + 
+                            (np.abs(centers[2] - centers[0]))) / 3
         else:
             QMessageBox.critical(self, "Error", "Calibration calculation failed. Number of peaks must be 2 or 3.")
             return
 
-        channel_calibration_factor = delta_channel / laser_wavelength
-
         # Update experiment setup and UI
-        self.experiment_setup.calibration_factor = nominal(channel_calibration_factor)
-        self.experiment_setup.calibration_factor_unc = channel_calibration_factor.std_dev
-        self.ui.le_calibration.setText(f"{self.experiment_setup.calibration_factor:.6f}")
-        self.ui.le_calibration_unc.setText(f"{self.experiment_setup.calibration_factor_unc:.6f}")
+        self.experiment_setup.calibration_value = nominal(delta_channel)
+        self.experiment_setup.calibration_value_unc = delta_channel.std_dev
+        self.ui.le_calibration.setText(f"{self.experiment_setup.calibration_value:.6f}")
+        self.ui.le_calibration_unc.setText(f"{self.experiment_setup.calibration_value_unc:.6f}")
 
     def reset_entires(self):
         """Reset all entries, plots, and experiment setup to initial state"""

@@ -7,13 +7,13 @@ from typing import Tuple, Dict, Any
 
 def experiment_setup_calibration(file_path: Path) -> ExperimentSetup:
     scattering_angle = None
-    laser_wavelength = None
-    spacing = None
-    calibration_factor = None
     scattering_angle_unc = None
+    laser_wavelength = None
     laser_wavelength_unc = None
+    spacing = None
     spacing_unc = None
-    calibration_factor_unc = None
+    calibration_value = None
+    calibration_value_unc = None
 
     with open(file_path) as f:
         dict = safe_load(f)
@@ -28,10 +28,10 @@ def experiment_setup_calibration(file_path: Path) -> ExperimentSetup:
             spacing = sub_dict['spacing']
             spacing_unc = sub_dict['spacing_unc']        
             if 'calibration_factor' in sub_dict:
-                calibration_factor = sub_dict['calibration_factor']
+                calibration_value = sub_dict['calibration_factor']
 
             if 'calibration_factor_unc' in sub_dict:
-                calibration_factor_unc = sub_dict['calibration_factor_unc']
+                calibration_value_unc = sub_dict['calibration_factor_unc']
         
         except ValueError as e:
             raise ValueError(f"Error reading calibration settings from {file_path}: {e} \n. Please enter values manually.") from e
@@ -43,7 +43,7 @@ def experiment_setup_calibration(file_path: Path) -> ExperimentSetup:
             laser_wavelength = dict['para_lambda']
             spacing = dict['para_PS']
             if "average_BS_shift" in dict:
-                calibration_factor = dict['average_BS_shift']
+                calibration_value = dict['average_BS_shift']
 
         except ValueError as e:
             raise ValueError(f"Error reading calibration settings from {file_path}: {e} \n. Please enter values manually.") from e
@@ -55,8 +55,8 @@ def experiment_setup_calibration(file_path: Path) -> ExperimentSetup:
         laser_wavelength_unc = laser_wavelength_unc,
         spacing = spacing,
         spacing_unc = spacing_unc,
-        calibration_factor = calibration_factor,
-        calibration_factor_unc = calibration_factor_unc
+        calibration_value = calibration_value,
+        calibration_value_unc = calibration_value_unc
     )
 
     return to_return

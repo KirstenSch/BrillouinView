@@ -6,10 +6,11 @@ from scipy.special import wofz
 import pandas as pd
 import matplotlib.pyplot as plt
 from pathlib import Path
+from uncertainties import ufloat
 
 from brillouinview.fitting_functions import gaussian, lorentzian, voigt
 # Test reading calibration settings from a file
-from brillouinview.calibration import ExperimentSetup
+from brillouinview.calibration import ExperimentSetup, calculate_channel_bshift_factor, ExperimentSetupPublic
 from brillouinview.io_fileparsing import experiment_setup_calibration, read_ghost_file
 from brillouinview.fitting_algorithm import fit_peaks, gaussian
 
@@ -58,30 +59,30 @@ def test_calibration_settings_read_txt():
     # Create a temporary calibration file
     temp_file = Path("test/files/calibration_settings_old.txt")
     experimental_setup = experiment_setup_calibration(temp_file)
-    assert isinstance(experimental_setup, ExperimentSetup)
+    assert isinstance(experimental_setup, ExperimentSetupPublic)
     assert experimental_setup.scattering_angle == 50.1
-    assert experimental_setup.scattering_angle_unc == 0.0
+    assert experimental_setup.scattering_angle_unc == None
     assert experimental_setup.laser_wavelength == 532.2
-    assert experimental_setup.laser_wavelength_unc == 0.0
+    assert experimental_setup.laser_wavelength_unc == None
     assert experimental_setup.spacing == 5.0         
-    assert experimental_setup.spacing_unc == 0.0
-    assert experimental_setup.calibration_factor == 468.75         
-    assert experimental_setup.calibration_factor_unc == 0.0
+    assert experimental_setup.spacing_unc == None
+    assert experimental_setup.calibration_value == 468.75         
+    assert experimental_setup.calibration_value_unc == None
 
 
 def test_calibration_settings_read_yaml():
     # Create a temporary calibration file
     temp_file = Path("test/files/calibration_settings.yaml")
     experimental_setup = experiment_setup_calibration(temp_file)
-    assert isinstance(experimental_setup, ExperimentSetup)
+    assert isinstance(experimental_setup, ExperimentSetupPublic)
     assert experimental_setup.scattering_angle == 90.0
     assert experimental_setup.scattering_angle_unc == 1.0
     assert experimental_setup.laser_wavelength == 532.0
     assert experimental_setup.laser_wavelength_unc == 0.1
     assert experimental_setup.spacing == 0.85         
     assert experimental_setup.spacing_unc == 0.02
-    assert experimental_setup.calibration_factor == 123.45         
-    assert experimental_setup.calibration_factor_unc == 0.67
+    assert experimental_setup.calibration_value == 123.45         
+    assert experimental_setup.calibration_value_unc == 0.67
 
 
 def test_read_ghost_file():
@@ -132,11 +133,11 @@ def test_real_calibration_fit(tmp_path):
     x = results['x_values']
       # baseline is first param 
     for i, peak in enumerate(fitted_params, 1):
-        individual_fit = baseline + gaussian(x, peak['amplitude'], peak['center'], peak['sigma'])
+        individual_fit = baseline.nominal_value + gaussian(x, peak['amplitude'].nominal_value, peak['center'].nominal_value, peak['sigma'].nominal_value)
         ax2.plot(x, individual_fit, linestyle=':', linewidth=1.5, 
                 label=f'Fitted dip {i} (center={peak["center"]:.2f})')
-    
-    ax2.axhline(y=baseline, color='gray', linestyle='--', alpha=0.3, label='Baseline')
+
+    ax2.axhline(y=baseline.nominal_value, color='gray', linestyle='--', alpha=0.3, label='Baseline')
     ax2.set_xlabel('X')
     ax2.set_ylabel('Intensity')
     ax2.set_title(f'Step 5: Input vs Fitted Output (R² = {results["r_squared"]:.4f})')
@@ -186,7 +187,7 @@ def test_two_random_dips_workflow(tmp_path):
         
         # Create combined function with raised baseline
         y_input = baseline + gaussian(x, amp1, center1, sigma1) + gaussian(x, amp2, center2, sigma2)
-        
+
         # Ensure all values are positive
         assert np.all(y_input > 0), "All values should be positive with raised baseline"
         
@@ -227,10 +228,10 @@ def test_two_random_dips_workflow(tmp_path):
         
         # Plot individual fitted dips
         for i, peak in enumerate(fitted_params, 1):
-            individual_fit = baseline + gaussian(x, peak['amplitude'], peak['center'], peak['sigma'])
+            individual_fit = baseline + gaussian(x, peak['amplitude'].nominal_value, peak['center'].nominal_value, peak['sigma'].nominal_value)
             ax2.plot(x, individual_fit, linestyle=':', linewidth=1.5, 
-                    label=f'Fitted dip {i} (center={peak["center"]:.2f})')
-        
+                    label=f'Fitted dip {i} (center={peak["center"].nominal_value:.2f})')
+
         ax2.axhline(y=baseline, color='gray', linestyle='--', alpha=0.3, label='Baseline')
         ax2.set_xlabel('X')
         ax2.set_ylabel('Intensity')
@@ -284,3 +285,21 @@ def test_two_random_dips_workflow(tmp_path):
         print(f"\nR² = {results['r_squared']:.6f}")
         print("="*60)
         print("✓ All parameters match within tolerance!")
+
+def test_calculation_calibration_factor():
+    exp_setup_test = ExperimentSetupPublic()
+    exp_setup_test.calibration_value = 400.0
+    exp_setup_test.calibration_value_unc = 4.0
+    exp_setup_test.spacing = 300e-6
+    exp_setup_test.spacing_unc = 3e-6
+    OD = 1
+
+    calibration_factor = calculate_channel_bshift_factor(exp_setup_test, OD)
+
+    assert calibration_factor.nominal_value > 0
+    assert calibration_factor.std_dev > 0
+    
+    expected_value_external = 1.249135241e9
+    
+    # Assert both nominal values are close to expected_value_external
+    assert abs(calibration_factor.nominal_value - expected_value_external) / expected_value_external < 1e-6  # relative tolerance

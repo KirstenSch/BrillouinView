@@ -197,7 +197,7 @@
                 <item row="3" column="1" alignment="Qt::AlignHCenter">
                  <widget class="QLabel" name="label_8">
                   <property name="text">
-                   <string>Ch/nm</string>
+                   <string>Ch</string>
                   </property>
                  </widget>
                 </item>
@@ -293,7 +293,11 @@
                  </widget>
                 </item>
                 <item row="0" column="1">
-                 <widget class="QSpinBox" name="sB_numpeaks"/>
+                 <widget class="QSpinBox" name="sB_numpeaks">
+                  <property name="value">
+                   <number>3</number>
+                  </property>
+                 </widget>
                 </item>
                </layout>
               </item>
