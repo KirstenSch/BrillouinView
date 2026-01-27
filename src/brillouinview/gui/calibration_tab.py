@@ -13,7 +13,7 @@ from brillouinview.fitting_functions import gaussian
 from brillouinview.helping_functions import nominal
 
 class ExperimentSetupWindow(QDialog):
-    sig = pyqtSignal(object, float)
+    sig = pyqtSignal(object)
     def __init__(self, experiment_setup: ExperimentSetup):
         super().__init__()
         self.current_experiment_setup = experiment_setup
@@ -55,11 +55,58 @@ class ExperimentSetupWindow(QDialog):
                 if value is not None and hasattr(self.current_experiment_setup, key):
                     setattr(self.current_experiment_setup, key, value)
             
-            self.sig.emit(self.current_experiment_setup, self.prev_laser)
+            self.sig.emit(self.current_experiment_setup)
             self.close()
+        else:
+            QMessageBox.critical(self, "Error", "Invalid input values. All entries have to bee positiv and within the given ranges (see tool tips). " \
+            "Also, uncertainties must be provided together with their corresponding values.")
 
     def sanitiy_check(self):
-        # Todo: implement sanity checks here
+        """
+        Validate dictionary values against key-specific ranges.
+        
+        Args:
+            data: Dictionary to validate
+            ranges: Dictionary mapping keys to (min, max) tuples
+        
+        Returns:
+            bool: True if all values are valid
+        """
+        ranges = {
+            "scattering_angle": (0.0, 180.0),
+            "scattering_angle_unc": (0.0, 10.0),
+            "laser_wavelength": (100.0, 2000.0),
+            "laser_wavelength_unc": (0.0, 10.0),
+            "spacing": (0.1, 1000.0),
+            "spacing_unc": (0.0, 100.0),
+        }
+
+        paired_keys = [
+            ('scattering_angle', 'scattering_angle_unc'),
+            ('laser_wavelength', 'laser_wavelength_unc'),
+            ('spacing', 'spacing_unc'),
+            # Add more pairs as needed
+        ]
+        
+        # Check type consistency for paired keys
+        for key1, key2 in paired_keys:
+            if key1 in self.new_experiment_setup_data and key2 in self.new_experiment_setup_data:
+                val1, val2 = self.new_experiment_setup_data[key1], self.new_experiment_setup_data[key2]
+                # Both must be None or both must be not-None
+                if (val1 is None) != (val2 is None):
+                    return False
+
+        for key, value in self.new_experiment_setup_data.items():
+            if value is None:
+                continue  # None is always valid
+            
+            if key not in ranges:
+                return False  # Unknown key
+            
+            min_val, max_val = ranges[key]
+            if not (min_val <= value <= max_val):
+                return False
+
         return True
 
     def read_all_fields(self):
