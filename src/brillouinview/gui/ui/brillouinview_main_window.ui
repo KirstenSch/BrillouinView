@@ -283,6 +283,16 @@
                     <string>Gaussian</string>
                    </property>
                   </item>
+                  <item>
+                   <property name="text">
+                    <string>Lorentzian</string>
+                   </property>
+                  </item>
+                  <item>
+                   <property name="text">
+                    <string>Voigt</string>
+                   </property>
+                  </item>
                  </widget>
                 </item>
                 <item row="0" column="0">

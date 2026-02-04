@@ -7,8 +7,9 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from pathlib import Path
 from uncertainties import ufloat
+from numpy.testing import assert_allclose
 
-from brillouinview.fitting_functions import gaussian, lorentzian, voigt
+from brillouinview.fitting_algorithm import voigt, pseudo_voigt, gaussian, lorentzian
 # Test reading calibration settings from a file
 from brillouinview.calibration import ExperimentSetup, calculate_channel_bshift_factor, ExperimentSetupPublic
 from brillouinview.io_fileparsing import experiment_setup_calibration, read_ghost_file
@@ -39,22 +40,78 @@ def test_lorentzian():
     result = lorentzian(x, amp, mean, gamma)
     np.testing.assert_array_almost_equal(result, expected)
 
-def test_voigt():
-    # Test the Voigt fitting function
-    # Function reference: 
-    x = np.array([0, 1, 2])
-    amp = 1
-    mean = 1
-    stddev = 1
-    gamma = 1
-    z = (x - mean + 1j * gamma) / (stddev * np.sqrt(2))
-    denominator = stddev * np.sqrt(2 * np.pi)
-    wofz_result = wofz(z)
-    expected = amp * np.real(wofz_result / denominator)
-    result = voigt(x, amp, mean, stddev, gamma)
-    np.testing.assert_array_almost_equal(result, expected)
+def test_voigt_reduces_to_gaussian_when_gamma_zero():
+    x = np.linspace(-10, 10, 401)
+    amplitude = 3.5
+    center = 0.7
+    sigma = 0.9
+    gamma = 0.0
+
+    v = voigt(x, amplitude, center, sigma, gamma)
+    g = gaussian(x, amplitude, center, sigma)
+
+    assert v.shape == x.shape
+    assert_allclose(v, g, rtol=1e-7, atol=1e-9)
 
 
+def test_voigt_reduces_to_lorentzian_when_sigma_zero():
+    x = np.linspace(-10, 10, 401)
+    amplitude = 2.2
+    center = -1.5
+    sigma = 0.0
+    gamma = 0.8
+
+    v = voigt(x, amplitude, center, sigma, gamma)
+    l = lorentzian(x, amplitude, center, gamma)
+
+    assert v.shape == x.shape
+    assert_allclose(v, l, rtol=1e-7, atol=1e-9)
+
+
+def test_voigt_center_value_equals_amplitude():
+    # ensure center is exactly a sample point
+    x = np.linspace(-5, 5, 501)
+    amplitude = 4.0
+    center = 1.0
+    sigma = 0.6
+    gamma = 0.4
+
+    v = voigt(x, amplitude, center, sigma, gamma)
+    # find index exactly at center
+    idx = np.where(np.isclose(x, center))[0]
+    assert idx.size == 1
+    assert_allclose(v[idx[0]], amplitude, rtol=1e-8, atol=1e-10)
+
+
+@pytest.mark.parametrize("eta,expected_func", [
+    (0.0, gaussian),
+    (1.0, lorentzian),
+])
+def test_pseudo_voigt_extremes_equal_components(eta, expected_func):
+    x = np.linspace(-8, 8, 401)
+    amplitude = 1.7
+    center = -0.3
+    sigma = 0.5
+    gamma = 0.9
+
+    pv = pseudo_voigt(x, amplitude, center, sigma, gamma, eta=eta)
+    comp = expected_func(x, amplitude, center, sigma) if expected_func is gaussian else expected_func(x, amplitude, center, gamma)
+
+    assert pv.shape == x.shape
+    assert_allclose(pv, comp, rtol=1e-7, atol=1e-9)
+
+
+def test_pseudo_voigt_without_eta_center_value_equals_amplitude():
+    x = np.linspace(-6, 6, 601)
+    amplitude = 2.5
+    center = 0.0
+    sigma = 0.4
+    gamma = 0.6
+
+    pv = pseudo_voigt(x, amplitude, center, sigma, gamma)  # eta estimated internally
+    idx = np.where(np.isclose(x, center))[0]
+    assert idx.size == 1
+    assert_allclose(pv[idx[0]], amplitude, rtol=1e-8, atol=1e-10)
 def test_calibration_settings_read_txt():
     # Create a temporary calibration file
     temp_file = Path("test/files/calibration_settings_old.txt")

@@ -2,12 +2,102 @@ import numpy as np
 import pandas as pd
 from scipy.optimize import curve_fit
 from scipy.signal import find_peaks
+from scipy.special import wofz
 from uncertainties import correlated_values, ufloat
 
 
 def gaussian(x, amplitude:float, center:float, sigma:float):
     """Single Gaussian peak function."""
     return amplitude * np.exp(-((x - center) ** 2) / (2 * sigma ** 2))
+
+
+def lorentzian(x, amplitude: float, center: float, gamma: float):
+    """Lorentzian peak with peak height = amplitude.
+    gamma is the half-width at half-maximum (HWHM).
+    """
+    x = np.asarray(x, dtype=float)
+    # Avoid division by zero; if gamma==0 return a delta-like zero array except at center
+    if gamma == 0:
+        out = np.zeros_like(x)
+        # set exactly at center to amplitude (best-effort)
+        idx = np.isclose(x, center)
+        out[idx] = amplitude
+        return out
+    return amplitude * (gamma ** 2 / ((x - center) ** 2 + gamma ** 2))
+
+
+def voigt(x, amplitude: float, center: float, sigma: float, gamma: float):
+    """Voigt profile (convolution of Gaussian(sigma) and Lorentzian(gamma)).
+    amplitude scales the peak so value at center equals amplitude.
+    sigma: Gaussian standard deviation
+    gamma: Lorentzian half-width at half-maximum (HWHM)
+    """
+    x = np.asarray(x, dtype=float)
+    # Handle limiting cases
+    if sigma == 0 and gamma == 0:
+        out = np.zeros_like(x)
+        idx = np.isclose(x, center)
+        out[idx] = amplitude
+        return out
+    if sigma == 0:
+        return lorentzian(x, amplitude, center, gamma)
+    if gamma == 0:
+        return gaussian(x, amplitude, center, sigma)
+
+    # Shift x to center
+    x_shift = x - center
+    z = (x_shift + 1j * gamma) / (sigma * np.sqrt(2))
+    voigt_profile = np.real(wofz(z)) / (sigma * np.sqrt(2 * np.pi))
+
+    # Normalize so center value is 1, then scale by amplitude
+    z0 = (1j * gamma) / (sigma * np.sqrt(2))
+    center_val = np.real(wofz(z0)) / (sigma * np.sqrt(2 * np.pi))
+    if not np.isfinite(center_val) or center_val == 0:
+        norm = 1.0
+    else:
+        norm = center_val
+    return amplitude * (voigt_profile / norm)
+
+
+def pseudo_voigt(x, amplitude: float, center: float, sigma: float, gamma: float, eta: float = None):
+    """Pseudo-Voigt approximation: weighted sum of Gaussian and Lorentzian.
+    amplitude scales the combined peak (value at center equals amplitude).
+    sigma: Gaussian std; gamma: Lorentzian HWHM; eta: mixing parameter [0..1].
+    If eta is None an empirical approximation is used.
+    """
+    x = np.asarray(x, dtype=float)
+
+    # Gaussian component (normalized to 1 at center when sigma>0)
+    if sigma > 0:
+        gauss = np.exp(-((x - center) ** 2) / (2 * sigma ** 2))
+    else:
+        gauss = np.zeros_like(x)
+        gauss[np.isclose(x, center)] = 1.0
+
+    # Lorentzian component (normalized to 1 at center when gamma>0)
+    if gamma > 0:
+        lor = gamma ** 2 / ((x - center) ** 2 + gamma ** 2)
+    else:
+        lor = np.zeros_like(x)
+        lor[np.isclose(x, center)] = 1.0
+
+    # Estimate mixing parameter if not provided using common approximation
+    if eta is None:
+        # FWHMs
+        fG = 2 * np.sqrt(2 * np.log(2)) * sigma
+        fL = 2 * gamma
+        # Combined FWHM approximation (Ida/Thompson style)
+        f = (fG ** 5 + 2.69269 * fG ** 4 * fL + 2.42843 * fG ** 3 * fL ** 2
+             + 4.47163 * fG ** 2 * fL ** 3 + 0.07842 * fG * fL ** 4 + fL ** 5) ** (1.0 / 5.0)
+        if f == 0:
+            eta = 0.0
+        else:
+            fr = fL / f
+            eta = 1.36603 * fr - 0.47719 * fr ** 2 + 0.11116 * fr ** 3
+            eta = float(np.clip(eta, 0.0, 1.0))
+
+    pv = eta * lor + (1.0 - eta) * gauss
+    return amplitude * pv
 
 
 def multi_gaussian(x, *params):
@@ -21,6 +111,32 @@ def multi_gaussian(x, *params):
     
     for i in range(1, len(params), 3):
         y += gaussian(x, params[i], params[i + 1], params[i + 2])
+    return y
+
+def multi_lorentzian(x, *params):
+    """Multiple Lorentzian peaks combined with a constant baseline.
+
+    params: flattened list [baseline, amp1, center1, gamma1, amp2, center2, gamma2, ...]
+    First parameter is the constant baseline offset.
+    """
+    baseline = params[0]
+    y = np.full_like(x, baseline, dtype=float)
+
+    for i in range(1, len(params), 4):
+        y += lorentzian(x, params[i], params[i + 1], params[i + 2])
+    return y
+
+def multi_voigt(x, *params):
+    """Multiple Voigt peaks combined with a constant baseline.
+
+    params: flattened list [baseline, amp1, center1, sigma1, gamma1, amp2, center2, sigma2, gamma2, ...]
+    First parameter is the constant baseline offset.
+    """
+    baseline = params[0]
+    y = np.full_like(x, baseline, dtype=float)
+
+    for i in range(1, len(params), 4):
+        y += voigt(x, params[i], params[i + 1], params[i + 2], params[i + 3])
     return y
 
 
