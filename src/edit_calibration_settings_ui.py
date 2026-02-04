@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Form implementation generated from reading ui file 'src/ui/edit_calibration_settings.ui'
+# Form implementation generated from reading ui file 'src/brillouinview/gui/ui/edit_calibration_settings.ui'
 #
 # Created by: PyQt5 UI code generator 5.15.11
 #
@@ -86,11 +86,11 @@ class Ui_EditCalibrationSettings(object):
         self.label_2.setObjectName("label_2")
         self.gridLayout.addWidget(self.label_2, 0, 0, 1, 1)
         self.le_calibration_unc = QtWidgets.QLineEdit(EditCalibrationSettings)
-        self.le_calibration_unc.setReadOnly(False)
+        self.le_calibration_unc.setReadOnly(True)
         self.le_calibration_unc.setObjectName("le_calibration_unc")
         self.gridLayout.addWidget(self.le_calibration_unc, 3, 4, 1, 1)
         self.le_calibration = QtWidgets.QLineEdit(EditCalibrationSettings)
-        self.le_calibration.setReadOnly(False)
+        self.le_calibration.setReadOnly(True)
         self.le_calibration.setObjectName("le_calibration")
         self.gridLayout.addWidget(self.le_calibration, 3, 2, 1, 1)
         self.left.addLayout(self.gridLayout)
@@ -107,7 +107,7 @@ class Ui_EditCalibrationSettings(object):
         self.label.setToolTip(_translate("EditCalibrationSettings", "<html><head/><body><p>Laserwavelength of the exitation laser used in the experiment. </p></body></html>"))
         self.label.setText(_translate("EditCalibrationSettings", "Wavelength"))
         self.label_3.setText(_translate("EditCalibrationSettings", "Spacing"))
-        self.label_8.setText(_translate("EditCalibrationSettings", "#"))
+        self.label_8.setText(_translate("EditCalibrationSettings", "Ch"))
         self.label_5.setText(_translate("EditCalibrationSettings", "°"))
         self.label_16.setText(_translate("EditCalibrationSettings", "±"))
         self.label_17.setText(_translate("EditCalibrationSettings", "±"))
@@ -116,3 +116,5 @@ class Ui_EditCalibrationSettings(object):
         self.label_14.setText(_translate("EditCalibrationSettings", "±"))
         self.label_4.setText(_translate("EditCalibrationSettings", "Calibration"))
         self.label_2.setText(_translate("EditCalibrationSettings", "Scattering angle"))
+        self.le_calibration_unc.setToolTip(_translate("EditCalibrationSettings", "Calibration values are not editable by hand — load calibration data or run the calibration to populate these fields."))
+        self.le_calibration.setToolTip(_translate("EditCalibrationSettings", "Calibration values are not editable by hand — load calibration data or run the calibration to populate these fields."))
