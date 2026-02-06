@@ -558,6 +558,30 @@
    <container>1</container>
   </customwidget>
  </customwidgets>
+ <tabstops>
+  <tabstop>tabWidget</tabstop>
+  <tabstop>button_calibration_load_settings</tabstop>
+  <tabstop>button_edit_settings</tabstop>
+  <tabstop>button_load_calibration</tabstop>
+  <tabstop>le_calibration_data</tabstop>
+  <tabstop>sB_numpeaks</tabstop>
+  <tabstop>cBox_peakfunction</tabstop>
+  <tabstop>button_start_fit</tabstop>
+  <tabstop>button_run_calibration</tabstop>
+  <tabstop>button_export</tabstop>
+  <tabstop>button_reset</tabstop>
+  <tabstop>le_angle</tabstop>
+  <tabstop>le_angle_unc</tabstop>
+  <tabstop>le_wavelength</tabstop>
+  <tabstop>le_wavelength_unc</tabstop>
+  <tabstop>le_spacing</tabstop>
+  <tabstop>le_spacing_unc</tabstop>
+  <tabstop>le_calibration</tabstop>
+  <tabstop>le_calibration_unc</tabstop>
+  <tabstop>le_pos_d1</tabstop>
+  <tabstop>le_pos_d2</tabstop>
+  <tabstop>le_pos_d3</tabstop>
+ </tabstops>
  <resources/>
  <connections/>
 </ui>

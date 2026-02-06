@@ -44,6 +44,9 @@
        </item>
        <item row="2" column="0">
         <widget class="QLabel" name="label_3">
+         <property name="toolTip">
+          <string>Mirrorspacing of the Fabry-Perot Interferometer</string>
+         </property>
          <property name="text">
           <string>Spacing</string>
          </property>
@@ -51,6 +54,9 @@
        </item>
        <item row="2" column="2">
         <widget class="QLineEdit" name="le_spacing">
+         <property name="toolTip">
+          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Allowed Range:&lt;/p&gt;&lt;p&gt;0.1 - 1000&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+         </property>
          <property name="readOnly">
           <bool>false</bool>
          </property>
@@ -58,6 +64,9 @@
        </item>
        <item row="2" column="4">
         <widget class="QLineEdit" name="le_spacing_unc">
+         <property name="toolTip">
+          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Allowed Range:&lt;/p&gt;&lt;p&gt;0 - 100&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+         </property>
          <property name="readOnly">
           <bool>false</bool>
          </property>
@@ -65,6 +74,9 @@
        </item>
        <item row="0" column="4">
         <widget class="QLineEdit" name="le_angle_unc">
+         <property name="toolTip">
+          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Allowed Range:&lt;/p&gt;&lt;p&gt;0 - 10&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+         </property>
          <property name="readOnly">
           <bool>false</bool>
          </property>
@@ -93,6 +105,9 @@
        </item>
        <item row="1" column="2">
         <widget class="QLineEdit" name="le_wavelength">
+         <property name="toolTip">
+          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Allowed Range:&lt;/p&gt;&lt;p&gt;100 - 2000&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+         </property>
          <property name="readOnly">
           <bool>false</bool>
          </property>
@@ -124,6 +139,9 @@
          <property name="enabled">
           <bool>true</bool>
          </property>
+         <property name="toolTip">
+          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Allowed Range: &lt;/p&gt;&lt;p&gt;0 - 180&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+         </property>
          <property name="readOnly">
           <bool>false</bool>
          </property>
@@ -138,6 +156,9 @@
        </item>
        <item row="3" column="0">
         <widget class="QLabel" name="label_4">
+         <property name="toolTip">
+          <string>Channels between the peaks in the calibation spectrum. Not edible by hand.</string>
+         </property>
          <property name="text">
           <string>Calibration</string>
          </property>
@@ -145,6 +166,9 @@
        </item>
        <item row="1" column="4">
         <widget class="QLineEdit" name="le_wavelength_unc">
+         <property name="toolTip">
+          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Allowed Range:&lt;/p&gt;&lt;p&gt;0 - 10&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+         </property>
          <property name="readOnly">
           <bool>false</bool>
          </property>
@@ -152,6 +176,9 @@
        </item>
        <item row="0" column="0">
         <widget class="QLabel" name="label_2">
+         <property name="toolTip">
+          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Scattering angle of incomming and outgoing laser beam&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+         </property>
          <property name="text">
           <string>Scattering angle</string>
          </property>
@@ -183,6 +210,17 @@
    </item>
   </layout>
  </widget>
+ <tabstops>
+  <tabstop>le_angle</tabstop>
+  <tabstop>le_angle_unc</tabstop>
+  <tabstop>le_wavelength</tabstop>
+  <tabstop>le_wavelength_unc</tabstop>
+  <tabstop>le_spacing</tabstop>
+  <tabstop>le_spacing_unc</tabstop>
+  <tabstop>button_calibration_save_settings</tabstop>
+  <tabstop>le_calibration</tabstop>
+  <tabstop>le_calibration_unc</tabstop>
+ </tabstops>
  <resources/>
  <connections/>
 </ui>
