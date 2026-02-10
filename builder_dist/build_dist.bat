@@ -32,7 +32,7 @@ uv sync
 REM Build executable
 echo.
 echo Building executable...
-python build_dist.py --name brillouinview --entry-point ..\src\main.py
+python build_dist.py --name brillouinview --entry-point ..\src\main.py 
 
 if errorlevel 1 (
     echo.
