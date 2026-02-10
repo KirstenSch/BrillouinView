@@ -1,9 +1,34 @@
+# Git ignore gitignore files
+.gitignore
+
 # Git ignore fpor venv files
 .venv/*
+
+# Git ingnore vscode files
+.vscode/*
+
+# ignore build files
+**/build/**
+
+# ignore distribution files
+**/dist/**
+
+# ignore all release files
+**/release/**
 
 # Git ignore for *.lock files
 *.lock
 
+# Git ignore for IDE specific files
+.idea/
+
+# Git ignore specs
+*.spec
+
 # Git ignore for Python cache files
 **/__pycache__/*
 .pytest_cache/*
+
+# git ignore vibe coding temps
+**/fitting_claude _idea.py
+**/test_claude_test.py
