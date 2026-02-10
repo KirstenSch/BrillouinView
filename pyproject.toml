@@ -13,6 +13,7 @@ dependencies = [
     "pandas>=2.3.3",
     "pybaselines>=1.2.1",
     "pyqt5==5.15.11",
+    "pyqt5-qt5==5.15.2",
     "pyqtgraph>=0.14.0",
     "pyquaternion>=0.9.9",
     "pyyaml>=6.0.3",
