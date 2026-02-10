@@ -30,30 +30,30 @@ pyuic5 src/brillouinview/gui/ui/edit_calibration_settings.ui -o src/edit_calibra
 
 **Linux/macOS:**
 ```bash
-./build_uv.sh
+./build_dist.sh
 ```
 
 **Windows:**
 ```cmd
-build_uv.bat
+build_dist.bat
 ```
 
 **Using Python directly:**
 ```bash
-python build_uv.py --name myapp --entry-point main_pyqt5.py
+python build_dist.py --name myapp --entry-point main_pyqt5.py
 ```
 
 ### Build Options
 
 ```bash
 # One-file executable (default)
-python build_uv.py --name myapp --entry-point main_pyqt5.py
+python build_dist.py --name myapp --entry-point main_pyqt5.py
 
 # One-directory bundle (faster startup, larger folder)
-python build_uv.py --name myapp --entry-point main_pyqt5.py --onedir
+python build_dist.py --name myapp --entry-point main_pyqt5.py --onedir
 
 # Don't clean build directories
-python build_uv.py --no-clean
+python build_dist.py --no-clean
 
 ```
 
