@@ -25,7 +25,7 @@ uv venv
 echo ""
 echo "Installing dependencies with UV..."
 source .venv/bin/activate
-uv sync
+uv sync --group dist --active
 
 # Build executable
 echo ""

@@ -79,12 +79,15 @@ class ExperimentSetupWindow(QDialog):
             "laser_wavelength_unc": (0.0, 10.0),
             "spacing": (0.1, 1000.0),
             "spacing_unc": (0.0, 100.0),
+            "calibration_value": (100, 1000.0),
+            "calibration_value_unc": (0.0, 100.0),
         }
 
         paired_keys = [
             ('scattering_angle', 'scattering_angle_unc'),
             ('laser_wavelength', 'laser_wavelength_unc'),
             ('spacing', 'spacing_unc'),
+            ('calibration_value', 'calibration_value_unc'),
             # Add more pairs as needed
         ]
         
@@ -99,7 +102,7 @@ class ExperimentSetupWindow(QDialog):
         for key, value in self.new_experiment_setup_data.items():
             if value is None:
                 continue  # None is always valid
-            
+
             if key not in ranges:
                 return False  # Unknown key
             
