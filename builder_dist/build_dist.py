@@ -38,7 +38,6 @@ def build_executable(entry_point="main.py", app_name="myapp", include_ui=True):
     Args:
         entry_point: Path to your main Python file
         app_name: Name of the output executable
-        onefile: If True, creates a single executable file
         include_ui: If True, includes UI files
     """
     if not os.path.exists(entry_point):
@@ -147,8 +146,7 @@ def main():
     
     build_executable(
         entry_point=args.entry_point,
-        app_name=args.name,
-        onefile=not args.onedir
+        app_name=args.name
     )
     # Optional: create release package 
     # create_release_package()

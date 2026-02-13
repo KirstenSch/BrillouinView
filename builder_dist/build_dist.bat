@@ -27,7 +27,7 @@ REM Install dependencies with UV
 echo.
 echo Installing dependencies with UV...
 call .venv\Scripts\activate.bat
-uv sync
+uv sync --active
 
 REM Build executable
 echo.
