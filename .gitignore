@@ -7,3 +7,7 @@
 # Git ignore for Python cache files
 **/__pycache__/*
 .pytest_cache/*
+
+# Git ignore directories for build and dist
+*/build/*
+*/dist/*
