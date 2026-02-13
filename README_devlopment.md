@@ -1,7 +1,16 @@
+
 # Activate venv
 ```console
 . .venv/bin/activate
 ```
+
+# Install project with with uv
+```console
+pip install uv
+uv lock
+uv sync
+```
+
 
 # GUI changes
 The GUI is set up with QT Designer
@@ -21,6 +30,37 @@ pyuic5 src/brillouinview/gui/ui/brillouinview_main_window.ui -o src/brillouinvie
 ```
 ```console
 pyuic5 src/brillouinview/gui/ui/edit_calibration_settings.ui -o src/edit_calibration_settings.ui.py
+```
+
+
+# Building Executables
+
+### Quick Build
+
+**Linux/macOS:**
+```bash
+./build_dist.sh
+```
+
+**Windows:**
+```cmd
+build_dist.bat
+```
+
+**Using Python directly:**
+```bash
+python build_dist.py --name myapp --entry-point main_pyqt5.py
+```
+
+### Build Options
+
+```bash
+# One-file executable (default)
+python build_dist.py --name myapp --entry-point main_pyqt5.py
+
+# Don't clean build directories
+python build_dist.py --no-clean
+
 ```
 
 

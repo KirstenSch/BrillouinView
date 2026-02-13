@@ -9,7 +9,7 @@ from brillouinview.io_fileparsing import read_ghost_file
 from brillouinview.fitting_algorithm import fit_peaks    
 import pyqtgraph as pg
 from PyQt5.QtCore import Qt
-from brillouinview.fitting_functions import gaussian
+from brillouinview.fitting_algorithm import gaussian
 from brillouinview.helping_functions import nominal
 
 class ExperimentSetupWindow(QDialog):
