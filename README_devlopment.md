@@ -1,7 +1,16 @@
+
 # Activate venv
 ```console
 . .venv/bin/activate
 ```
+
+# Install project with with uv
+```console
+pip install uv
+uv lock
+uv sync
+```
+
 
 # GUI changes
 The GUI is set up with QT Designer
@@ -48,9 +57,6 @@ python build_dist.py --name myapp --entry-point main_pyqt5.py
 ```bash
 # One-file executable (default)
 python build_dist.py --name myapp --entry-point main_pyqt5.py
-
-# One-directory bundle (faster startup, larger folder)
-python build_dist.py --name myapp --entry-point main_pyqt5.py --onedir
 
 # Don't clean build directories
 python build_dist.py --no-clean

@@ -31,7 +31,7 @@ def get_python_executable():
         return Path(".venv/bin/python")
 
 
-def build_executable(entry_point="main.py", app_name="myapp", onefile=True, include_ui=True):
+def build_executable(entry_point="main.py", app_name="myapp", include_ui=True):
     """
     Build executable using PyInstaller with UV environment
     
@@ -55,10 +55,7 @@ def build_executable(entry_point="main.py", app_name="myapp", onefile=True, incl
         "--clean",
         f"--name={app_name}",
     ]
-    
-    if onefile:
-        cmd.append("--onefile")
-    
+
     # Add UI files if present
     if include_ui:
         ui_files = list(Path(".").glob("*.ui"))
@@ -96,6 +93,7 @@ def build_executable(entry_point="main.py", app_name="myapp", onefile=True, incl
     cmd.append(entry_point)
     
     # Run PyInstaller
+    print(f"Running command: {' '.join(cmd)}")
     subprocess.check_call(cmd)
     
     print(f"✓ Build complete! Executable in dist/ directory")
