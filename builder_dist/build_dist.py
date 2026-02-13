@@ -134,8 +134,6 @@ def main():
                        help="Name of the executable (default: myapp)")
     parser.add_argument("--no-clean", action="store_true",
                        help="Don't clean build directories before building")
-    parser.add_argument("--onedir", action="store_true",
-                       help="Create one-directory bundle instead of one-file")
 
     args = parser.parse_args()
 
