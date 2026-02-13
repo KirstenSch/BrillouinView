@@ -29,6 +29,6 @@
 **/__pycache__/*
 .pytest_cache/*
 
-# git ignore vibe coding temps
-**/fitting_claude _idea.py
-**/test_claude_test.py
+# Git ignore directories for build and dist
+*/build/*
+*/dist/*
