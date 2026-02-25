@@ -172,7 +172,7 @@ def test_real_calibration_fit(tmp_path):
     df, header = read_ghost_file(ghost_file)
 
     # Fit five peaks 
-    results = fit_peaks(df, n_peaks=5, column="intensity")
+    results = fit_peaks(df, n_peaks=5, column="intensity")#, peak_function='Gaussian')
 
     # Step 4: Create data from the combined fit_peaks output
     y_fitted = results['fitted_curve']
@@ -220,7 +220,7 @@ def test_real_calibration_fit(tmp_path):
     assert results["r_squared"] > 0.95
 
 
-def test_two_random_dips_workflow(tmp_path):
+def test_two_random_gaussian_dips_workflow(tmp_path):
         """Complete workflow: generate random dips, fit, compare parameters."""
         np.random.seed(123)  # For reproducibility
         
@@ -270,8 +270,8 @@ def test_two_random_dips_workflow(tmp_path):
         
         # Step 3: Use combined data as input for fit_peaks
         df = pd.DataFrame({'intensities': y_input}, index=x)
-        results = fit_peaks(df, n_peaks=2)
-        
+        results = fit_peaks(df, n_peaks=2, peak_function='Gaussian')
+
         # Step 4: Create data from the combined fit_peaks output
         y_fitted = results['fitted_curve']
         fitted_params = sorted(results['params'], key=lambda p: p['center'])
