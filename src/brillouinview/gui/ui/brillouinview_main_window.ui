@@ -278,11 +278,9 @@
                 </item>
                 <item row="2" column="1">
                  <widget class="QComboBox" name="cBox_peakfunction">
-                  <item>
-                   <property name="text">
-                    <string>Gaussian</string>
-                   </property>
-                  </item>
+                  <property name="toolTip">
+                   <string>Choose the type of peak function</string>
+                  </property>
                   <item>
                    <property name="text">
                     <string>Lorentzian</string>
@@ -290,7 +288,17 @@
                   </item>
                   <item>
                    <property name="text">
+                    <string>Gaussian</string>
+                   </property>
+                  </item>
+                  <item>
+                   <property name="text">
                     <string>Voigt</string>
+                   </property>
+                  </item>
+                  <item>
+                   <property name="text">
+                    <string>Pseudo Voigt</string>
                    </property>
                   </item>
                  </widget>
@@ -396,6 +404,12 @@
               <width>0</width>
               <height>600</height>
              </size>
+            </property>
+            <property name="toolTipDuration">
+             <number>-1</number>
+            </property>
+            <property name="layoutDirection">
+             <enum>Qt::RightToLeft</enum>
             </property>
             <layout class="QVBoxLayout" name="verticalLayout"/>
            </widget>
