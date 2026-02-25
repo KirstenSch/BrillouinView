@@ -14,6 +14,7 @@ from brillouinview.io_fileparsing import experiment_setup_calibration
 from brillouinview.gui.calibration_tab import ExperimentSetupWindow, CalibrationFitWindow
 from brillouinview.io_fileparsing import read_ghost_file
 from brillouinview.fitting_algorithm import gaussian
+from brillouinview.plotting_modul import PeakPlotter
 from PyQt5.QtCore import Qt
 
 class BrillouinViewApp(QMainWindow):
@@ -169,40 +170,17 @@ class BrillouinViewApp(QMainWindow):
         self.ui.button_run_calibration.setEnabled(True)
 
     def plot_calibration_peaks(self):
-
-        """Add individual peaks from calibration parameters to the existing calibration plot"""
+        cal_data = self.calibration_data
+        results = self.experiment_setup
+        baseline = nominal(self.experiment_setup.calibration_background) if hasattr(self.experiment_setup, 'calibration_background') else 0.0
+        plotter = PeakPlotter(self.ui.graph, cal_data, results)
+        plotter.clear()
+        plotter.setup_axes()
+        plotter.plot_raw_data()
+        plotter.plot_individual_peaks(baseline=baseline)
+        plotter.plot_baseline(baseline=baseline)
+        self.ui.graph.show()
         
-        if not hasattr(self, 'calibration_data') or self.calibration_data is None:
-            return
-        
-        if not hasattr(self.experiment_setup, 'calibration_peak_parameters') or not self.experiment_setup.calibration_peak_parameters:
-            return
-        
-        # Define specific colors for up to 3 peaks
-        peak_colors = ['r', 'b', 'm']  # Red, Blue, Magenta
-        
-        # Get x values for plotting
-        x_values = self.calibration_data.index.values
-        
-        # Plot each individual peak
-        for i, peak in enumerate(self.experiment_setup.calibration_peak_parameters):
-            amp = nominal(peak.get("amplitude", 0.0))
-            cen = nominal(peak.get("center", 0.0))
-            sig = nominal(peak.get("sigma", 1.0))
-            
-            # Calculate individual Gaussian (assuming baseline is 0 or extract from somewhere)
-            baseline = nominal(self.experiment_setup.calibration_background) if hasattr(self.experiment_setup, 'calibration_background') else 0.0
-            individual = baseline + gaussian(x_values, amp, cen, sig)
-            
-            # Use predefined colors
-            color = peak_colors[i] if i < len(peak_colors) else pg.intColor(i, hues=6)
-            pen_peak = pg.mkPen(color=color, width=1.5, style=Qt.SolidLine)
-            self.ui.graph.plot(
-                x_values,
-                individual,
-                pen=pen_peak
-            )
-
     def calculate_calibration(self):
        
         # Extract center values

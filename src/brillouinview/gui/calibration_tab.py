@@ -9,8 +9,9 @@ from brillouinview.io_fileparsing import read_ghost_file
 from brillouinview.fitting_algorithm import fit_peaks    
 import pyqtgraph as pg
 from PyQt5.QtCore import Qt
-from brillouinview.fitting_algorithm import gaussian
+from brillouinview.fitting_algorithm import gaussian, lorentzian, voigt, pseudo_voigt
 from brillouinview.helping_functions import nominal
+from brillouinview.plotting_modul import PeakPlotter
 
 class ExperimentSetupWindow(QDialog):
     sig = pyqtSignal(object)
@@ -129,6 +130,15 @@ class ExperimentSetupWindow(QDialog):
 
 class CalibrationFitWindow(QDialog):
     sig = pyqtSignal(object)
+    
+    # Peak function mapping for plotting individual peaks
+    PEAK_FUNCTIONS = {
+        'Gaussian': gaussian,
+        'Lorentzian': lorentzian,
+        'Voigt': voigt,
+        'Pseudo Voigt': pseudo_voigt
+    }
+    
     def __init__(self, experiment_setup: ExperimentSetup):
         super().__init__()
         self.ui_calplot = Ui_CalibrationFitWindow()
@@ -156,12 +166,16 @@ class CalibrationFitWindow(QDialog):
             return
         
         # Fit peaks to calibration data
-        self.results = fit_peaks(self.calibration_data, n_peaks=self.peak_number, column="intensity")
+        try:
+            self.results = fit_peaks(self.calibration_data, n_peaks=self.peak_number, column="intensity", peak_function=self.experiment_setup.calibration_peak_function)
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Failed to fit peaks: {e}")
+            return
+
 
         self.plot_data()
         self.populate_fit_results_table()
         self.ui_calplot.le_used_function.setText(self.experiment_setup.calibration_peak_function)
-
 
     def apply_calibration_fit(self):
         if len(self.get_checked_peak_params()) < 2:
@@ -190,40 +204,33 @@ class CalibrationFitWindow(QDialog):
         params = self.results.get('params', [])
         
         if not params:
-            self.ui_calplot.tableWidget.setRowCount(0)
-            self.ui_calplot.tableWidget.setColumnCount(0)
             return
         
-        # Get parameter names from first peak (assumes all peaks have same parameters)
+        # Get parameter names from first peak (all peaks have same structure)
         param_names = list(params[0].keys())
         
-        # Check if num_peaks equal to number given
+        # Configure table
         num_peaks = len(params)
-        if num_peaks != self.peak_number:
-            QMessageBox.warning(self, "Warning", 
-                            f"Number of fitted dips ({num_peaks}) does not match expected number ({self.peak_number}).")
-        
         num_params = len(param_names)
         
-        # Set table dimensions (+2: one for peak number, one for checkbox column)
-        self.ui_calplot.tableWidget.setRowCount(num_peaks)
-        if use_checkbox:
-            self.ui_calplot.tableWidget.setColumnCount(num_params + 2)
-        else:
-            self.ui_calplot.tableWidget.setColumnCount(num_params + 1)
+        # +1 for peak number column, +1 for checkbox column if enabled
+        total_cols = num_params + 1 + (1 if use_checkbox else 0)
         
-        # Set column headers
-        headers = ['Dip'] + param_names
+        self.ui_calplot.tableWidget.setRowCount(num_peaks)
+        self.ui_calplot.tableWidget.setColumnCount(total_cols)
+        
+        # Set headers
+        headers = ["Peak #"] + param_names
         if use_checkbox:
-            headers += ['Use for Calibration']
+            headers.append("For Cal.")
         self.ui_calplot.tableWidget.setHorizontalHeaderLabels(headers)
         
-        # Populate table with data
+        # Populate rows
         for row, peak_params in enumerate(params):
             # Peak number column
-            peak_item = QTableWidgetItem(f"Dip {row + 1}")
-            peak_item.setTextAlignment(Qt.AlignCenter)
-            self.ui_calplot.tableWidget.setItem(row, 0, peak_item)
+            peak_num_item = QTableWidgetItem(str(row + 1))
+            peak_num_item.setTextAlignment(Qt.AlignCenter)
+            self.ui_calplot.tableWidget.setItem(row, 0, peak_num_item)
             
             # Parameter columns
             for col, param_name in enumerate(param_names):
@@ -319,104 +326,21 @@ class CalibrationFitWindow(QDialog):
         return checked_indices
 
     def plot_data(self):
-        # Plot the calibration data
-        self.ui_calplot.fit_plot.clear()
-        handle_data = self.ui_calplot.fit_plot.plot(
-            self.calibration_data.index,
-            self.calibration_data.iloc[:, 0],
-            pen=pg.mkPen('black', width=1.5) 
-        )
-
-        # Get the current x-range and extend it by 10% on the right
-        try:
-            plot_item = self.ui_calplot.fit_plot.getPlotItem()
-            x_min = self.calibration_data.index.min()
-            x_max = self.calibration_data.index.max()
-            x_range = x_max - x_min
-            # Extend x-axis by 10% on the right side for legend space
-            plot_item.setXRange(x_min, x_max + 0.1 * x_range, padding=0)
-        except Exception:
-            plot_item = None
-        
-        # Create legend positioned at right side center
-        try:
-            legend = self.ui_calplot.fit_plot.addLegend(
-                offset=(10, 0),
-                brush=(255, 255, 255, 200),  # Semi-transparent white background
-                labelTextSize='9pt'
-            )
-            # Anchor legend: (itemPos, parentPos)
-            # (0, 0.5) = left-center of legend, (1, 0.5) = right-center of plot
-            legend.anchor((0, 0.5), (1, 0.5), offset=(-3 * 0.1 * x_range, 0))
-
-            legend.addItem(handle_data, "Calibration Data")
-        except Exception:
-            legend = None
-
-        x_values = self.results.get("x_values")
-        y_fitted = self.results.get("fitted_curve")
-        # If baseline is a ufloat, use its nominal value for plotting
-        baseline = nominal(self.results.get("baseline", 0.0))
-        params = sorted(self.results.get("params", []), key=lambda p: nominal(p.get("center", 0)))
-
-        # Get checked peak indices
+        """Plot calibration data with fitted curves for all supported peak functions."""        
+        cal_data = self.calibration_data
+        results = self.experiment_setup
+        results.calibration_peak_parameters = sorted(self.results.get("params", []), key=lambda p: nominal(p.get("center", 0)))
+        ui_graph = self.ui_calplot.fit_plot
         checked_indices = self.get_checked_peak_indices()
-
-        # Overall fitted curve (red dashed)
-        if x_values is not None and y_fitted is not None:
-            pen_fit = pg.mkPen(color='r', width=2, style=Qt.DashLine)
-            handle_fit = self.ui_calplot.fit_plot.plot(
-                x_values,
-                y_fitted,
-                pen=pen_fit
-            )
-            if legend is not None:
-                try:
-                    legend.addItem(handle_fit, "Fitted output")
-                except Exception:
-                    pass
-
-        # Individual fitted dips
-        for i, peak in enumerate(params, start=1):
-            amp = nominal(peak.get("amplitude", 0.0))
-            cen = nominal(peak.get("center", 0.0))
-            sig = nominal(peak.get("sigma", 1.0))
-
-            x_for_fit = x_values if x_values is not None else self.calibration_data.index.values
-            individual = baseline + gaussian(x_for_fit, amp, cen, sig)
-            color = pg.intColor(i, hues=max(len(params) + 1, 6))
-            
-            # Check if this peak is checked (i-1 because enumerate starts at 1)
-            is_checked = (i - 1) in checked_indices
-            
-            # Use solid line with width=3 if checked, dotted line with width=1.5 if not
-            if is_checked:
-                pen_peak = pg.mkPen(color=color, width=3, style=Qt.SolidLine)
-            else:
-                pen_peak = pg.mkPen(color=color, width=1.5, style=Qt.DotLine)
-            
-            handle = self.ui_calplot.fit_plot.plot(
-                x_for_fit,
-                individual,
-                pen=pen_peak
-            )
-            if legend is not None:
-                try:
-                    legend.addItem(handle, f"Fitted dip {i}")
-                except Exception:
-                    pass
-
-        # Baseline line
-        try:
-            baseline_line = pg.InfiniteLine(pos=baseline, angle=0, pen=pg.mkPen('gray', style=Qt.DashLine))
-            self.ui_calplot.fit_plot.addItem(baseline_line)
-            if legend is not None:
-                try:
-                    h = self.ui_calplot.fit_plot.plot([0], [baseline], pen=pg.mkPen('gray', style=Qt.DashLine))
-                    legend.addItem(h, "Baseline")
-                except Exception:
-                    pass
-        except Exception:
-            pass
-
-
+        baseline = nominal(self.results.get("baseline", 0.0))
+        y_fitted = self.results.get("fitted_curve")
+        results.full_curve_y = y_fitted
+        plotter = PeakPlotter(ui_graph, cal_data, results)
+        plotter.clear()
+        plotter.setup_axes()
+        plotter.plot_raw_data()
+        plotter.plot_fitted_curve()
+        plotter.plot_baseline(baseline=baseline)
+        plotter.plot_individual_peaks(baseline=baseline, checked_indices=checked_indices)
+        
+        self.ui_calplot.fit_plot.show()

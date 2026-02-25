@@ -113,6 +113,7 @@ def multi_gaussian(x, *params):
         y += gaussian(x, params[i], params[i + 1], params[i + 2])
     return y
 
+
 def multi_lorentzian(x, *params):
     """Multiple Lorentzian peaks combined with a constant baseline.
 
@@ -122,9 +123,10 @@ def multi_lorentzian(x, *params):
     baseline = params[0]
     y = np.full_like(x, baseline, dtype=float)
 
-    for i in range(1, len(params), 4):
+    for i in range(1, len(params), 3):
         y += lorentzian(x, params[i], params[i + 1], params[i + 2])
     return y
+
 
 def multi_voigt(x, *params):
     """Multiple Voigt peaks combined with a constant baseline.
@@ -140,12 +142,73 @@ def multi_voigt(x, *params):
     return y
 
 
+def multi_pseudo_voigt(x, *params):
+    """Multiple Pseudo-Voigt peaks combined with a constant baseline.
 
-def estimate_initial_params(x, y, n_peaks):
-    """Estimate initial parameters for n_peaks Gaussians (dips) with baseline.
-    
-    Returns: list of [baseline, amp1, center1, sigma1, amp2, center2, sigma2, ...]
+    params: flattened list [baseline, amp1, center1, sigma1, gamma1, amp2, center2, sigma2, gamma2, ...]
+    First parameter is the constant baseline offset.
     """
+    baseline = params[0]
+    y = np.full_like(x, baseline, dtype=float)
+
+    for i in range(1, len(params), 4):
+        y += pseudo_voigt(x, params[i], params[i + 1], params[i + 2], params[i + 3])
+    return y
+
+
+# Configuration dictionary for peak function types
+PEAK_FUNCTION_CONFIG = {
+    'Gaussian': {
+        'function': multi_gaussian,
+        'params_per_peak': 3,  # amplitude, center, sigma
+        'param_names': ['amplitude', 'center', 'sigma']
+    },
+    'Lorentzian': {
+        'function': multi_lorentzian,
+        'params_per_peak': 3,  # amplitude, center, gamma
+        'param_names': ['amplitude', 'center', 'gamma']
+    },
+    'Voigt': {
+        'function': multi_voigt,
+        'params_per_peak': 4,  # amplitude, center, sigma, gamma
+        'param_names': ['amplitude', 'center', 'sigma', 'gamma']
+    },
+    'Pseudo Voigt': {
+        'function': multi_pseudo_voigt,
+        'params_per_peak': 4,  # amplitude, center, sigma, gamma
+        'param_names': ['amplitude', 'center', 'sigma', 'gamma']
+    }
+}
+
+
+def estimate_initial_params(x, y, n_peaks, peak_function='Gaussian'):
+    """Estimate initial parameters for n_peaks with baseline.
+    
+    Parameters:
+    -----------
+    x : array-like
+        X-values
+    y : array-like
+        Y-values
+    n_peaks : int
+        Number of peaks to fit
+    peak_function : str
+        Type of peak function ('Gaussian', 'Lorentzian', 'Voigt', 'Pseudo Voigt')
+
+    Returns:
+    --------
+    list : [baseline, param1_peak1, param2_peak1, ..., param1_peak2, ...]
+    """
+    # Validate peak function type
+    if peak_function not in PEAK_FUNCTION_CONFIG:
+        raise ValueError(
+            f"Unsupported peak function: {peak_function}. "
+            f"Supported: {list(PEAK_FUNCTION_CONFIG.keys())}"
+        )
+    
+    config = PEAK_FUNCTION_CONFIG[peak_function]
+    params_per_peak = config['params_per_peak']
+    
     # Estimate baseline as median or percentile of data
     baseline_estimate = np.percentile(y, 75)  # Assume baseline is near upper values
     
@@ -177,15 +240,171 @@ def estimate_initial_params(x, y, n_peaks):
     for peak_idx in peaks:
         amplitude = y_corrected[peak_idx]  # Will be negative for dips
         center = x[peak_idx]
-        # Estimate sigma from peak width (rough approximation)
-        sigma = (x.max() - x.min()) / (n_peaks * 4)  # reasonable default
-        initial_params.extend([amplitude, center, sigma])
+        # Estimate sigma/gamma from peak width (rough approximation)
+        width_param = (x.max() - x.min()) / (n_peaks * 4)  # reasonable default
+        
+        # Add parameters based on peak function type
+        if peak_function == 'Gaussian':
+            initial_params.extend([amplitude, center, width_param])
+        elif peak_function == 'Lorentzian':
+            initial_params.extend([amplitude, center, width_param])
+        elif peak_function in ['Voigt', 'Pseudo Voigt']:
+            # For Voigt/Pseudo-Voigt: amplitude, center, sigma, gamma
+            initial_params.extend([amplitude, center, width_param, width_param * 0.5])
     
     return initial_params
 
 
-def fit_peaks(df, n_peaks, column='intensities'):
-    """Fit n_peaks Gaussian peaks to spectroscopic data.
+def get_bounds(x, y, n_peaks, peak_function='Gaussian'):
+    """Generate parameter bounds based on peak function type.
+    
+    Parameters:
+    -----------
+    x : array-like
+        X-values
+    y : array-like
+        Y-values
+    n_peaks : int
+        Number of peaks
+    peak_function : str
+        Type of peak function
+        
+    Returns:
+    --------
+    tuple : (lower_bounds, upper_bounds)
+    """
+    config = PEAK_FUNCTION_CONFIG[peak_function]
+    params_per_peak = config['params_per_peak']
+    
+    # First bound is for baseline
+    bounds_lower = [0]  # Baseline >= 0
+    bounds_upper = [y.max() * 1.5]  # Baseline can be up to 1.5x max value
+    
+    x_range = x.max() - x.min()
+    
+    # Add bounds for each peak
+    for i in range(n_peaks):
+        if peak_function in ['Gaussian', 'Lorentzian']:
+            # amplitude, center, width_param (sigma or gamma)
+            bounds_lower.extend([y.min() - y.max(), x.min(), 0])
+            bounds_upper.extend([y.max(), x.max(), x_range])
+        elif peak_function in ['Voigt', 'Pseudo Voigt']:
+            # amplitude, center, sigma, gamma
+            bounds_lower.extend([y.min() - y.max(), x.min(), 0, 0])
+            bounds_upper.extend([y.max(), x.max(), x_range, x_range])
+    
+    return bounds_lower, bounds_upper
+
+
+def extract_peak_parameters(popt, pcov, peak_function='Gaussian'):
+    """Extract peak parameters with uncertainties from fit results.
+    
+    Parameters:
+    -----------
+    popt : array-like
+        Optimized parameters from curve_fit
+    pcov : array-like
+        Covariance matrix from curve_fit
+    peak_function : str
+        Type of peak function used
+        
+    Returns:
+    --------
+    tuple : (baseline_ufloat, list_of_peak_param_dicts)
+    """
+    config = PEAK_FUNCTION_CONFIG[peak_function]
+    params_per_peak = config['params_per_peak']
+    param_names = config['param_names']
+    
+    peak_params = []
+    sqrt2pi = np.sqrt(2 * np.pi)
+    
+    # Create correlated ufloats for proper uncertainty propagation
+    try:
+        correlated = correlated_values(popt, pcov)
+        baseline_u = correlated[0]
+        
+        for i in range(1, len(popt), params_per_peak):
+            param_dict = {}
+            
+            # Extract base parameters
+            for j, name in enumerate(param_names):
+                param_dict[name] = correlated[i + j]
+            
+            # Calculate derived parameters based on peak type
+            if peak_function == 'Gaussian':
+                sigma_u = param_dict['sigma']
+                amp_u = param_dict['amplitude']
+                param_dict['fwhm'] = 2.355 * sigma_u
+                param_dict['area'] = amp_u * sigma_u * sqrt2pi
+            elif peak_function == 'Lorentzian':
+                gamma_u = param_dict['gamma']
+                amp_u = param_dict['amplitude']
+                param_dict['fwhm'] = 2 * gamma_u
+                param_dict['area'] = amp_u * gamma_u * np.pi
+            elif peak_function in ['Voigt', 'Pseudo Voigt']:
+                # For Voigt, FWHM is more complex - approximate
+                sigma_u = param_dict['sigma']
+                gamma_u = param_dict['gamma']
+                amp_u = param_dict['amplitude']
+                fwhm_g = 2.355 * sigma_u
+                fwhm_l = 2 * gamma_u
+                # Approximate combined FWHM
+                param_dict['fwhm'] = 0.5346 * fwhm_l + (0.2166 * fwhm_l**2 + fwhm_g**2)**0.5
+                # Area calculation is approximate
+                param_dict['area'] = amp_u * sigma_u * sqrt2pi  # Simplified
+            
+            peak_params.append(param_dict)
+            
+    except Exception:
+        # Fallback: create independent ufloats from diagonal of pcov
+        if pcov is None or pcov.size == 0:
+            perr = np.full_like(popt, np.nan, dtype=float)
+        else:
+            with np.errstate(invalid='ignore'):
+                diag = np.diag(pcov)
+                perr = np.sqrt(np.where(diag >= 0, diag, np.nan))
+        
+        baseline_u = ufloat(float(popt[0]), float(perr[0]) if perr.size > 0 else np.nan)
+        
+        for i in range(1, len(popt), params_per_peak):
+            param_dict = {}
+            
+            # Extract base parameters
+            for j, name in enumerate(param_names):
+                idx = i + j
+                param_dict[name] = ufloat(
+                    float(popt[idx]), 
+                    float(perr[idx]) if perr.size > idx else np.nan
+                )
+            
+            # Calculate derived parameters
+            if peak_function == 'Gaussian':
+                sigma_u = param_dict['sigma']
+                amp_u = param_dict['amplitude']
+                param_dict['fwhm'] = 2.355 * sigma_u
+                param_dict['area'] = amp_u * sigma_u * sqrt2pi
+            elif peak_function == 'Lorentzian':
+                gamma_u = param_dict['gamma']
+                amp_u = param_dict['amplitude']
+                param_dict['fwhm'] = 2 * gamma_u
+                param_dict['area'] = amp_u * gamma_u * np.pi
+            elif peak_function in ['Voigt', 'Pseudo Voigt']:
+                sigma_u = param_dict['sigma']
+                gamma_u = param_dict['gamma']
+                amp_u = param_dict['amplitude']
+                fwhm_g = 2.355 * sigma_u
+                fwhm_l = 2 * gamma_u
+                param_dict['fwhm'] = 0.5346 * fwhm_l + (0.2166 * fwhm_l**2 + fwhm_g**2)**0.5
+                param_dict['area'] = amp_u * sigma_u * sqrt2pi
+            
+            peak_params.append(param_dict)
+    
+    return baseline_u, peak_params
+
+
+def fit_peaks(df, n_peaks, peak_function='Gaussian', column='intensities'):
+    """Fit n_peaks to spectroscopic data using specified peak function.
     
     Parameters:
     -----------
@@ -193,17 +412,35 @@ def fit_peaks(df, n_peaks, column='intensities'):
         DataFrame with index as x-values and intensity column
     n_peaks : int
         Number of peaks to fit
+    peak_function : str
+        Type of peak function: 'Gaussian', 'Lorentzian', 'Voigt', or 'Pseudo Voigt'
     column : str
         Name of the intensity column (default: 'intensities')
     
     Returns:
     --------
     dict with:
-        'params': list of dicts with 'amplitude', 'center', 'sigma' for each peak (as ufloats)
+        'params': list of dicts with peak parameters (as ufloats)
+        'baseline': baseline value (as ufloat)
         'fitted_curve': array of fitted y-values
+        'x_values': array of x-values
         'residuals': array of (observed - fitted)
         'r_squared': coefficient of determination
+        'covariance': covariance matrix
+        'peak_function': name of peak function used
     """
+    # Validate peak function
+    if peak_function not in PEAK_FUNCTION_CONFIG:
+        raise ValueError(
+            f"Unsupported peak function: {peak_function}. "
+            f"Supported: {list(PEAK_FUNCTION_CONFIG.keys())}"
+        )
+    
+    # Get configuration for this peak function
+    config = PEAK_FUNCTION_CONFIG[peak_function]
+    fit_function = config['function']
+    params_per_peak = config['params_per_peak']
+    
     # Extract data
     x = df.index.values
     y = df[column].values
@@ -217,26 +454,23 @@ def fit_peaks(df, n_peaks, column='intensities'):
             + ("..." if len(negative_indices) > 5 else "")
         )
     
-    if len(x) < 3 * n_peaks:
-        raise ValueError(f"Not enough data points for {n_peaks} peaks")
+    # Check sufficient data points
+    if len(x) < (1 + params_per_peak * n_peaks):
+        raise ValueError(
+            f"Not enough data points for {n_peaks} peaks with {peak_function} function. "
+            f"Need at least {1 + params_per_peak * n_peaks} points, have {len(x)}"
+        )
     
     # Get initial parameter estimates
-    p0 = estimate_initial_params(x, y, n_peaks)
+    p0 = estimate_initial_params(x, y, n_peaks, peak_function)
     
-    # Set reasonable bounds
-    # First bound is for baseline
-    bounds_lower = [0]  # Baseline >= 0
-    bounds_upper = [y.max() * 1.5]  # Baseline can be up to 1.5x max value
-    
-    # Then bounds for each peak
-    for i in range(n_peaks):
-        bounds_lower.extend([y.min() - y.max(), x.min(), 0])  # amp can be negative, center in range, sigma>0
-        bounds_upper.extend([y.max(), x.max(), x.max() - x.min()])
+    # Get bounds
+    bounds_lower, bounds_upper = get_bounds(x, y, n_peaks, peak_function)
     
     # Perform the fit
     try:
         popt, pcov = curve_fit(
-            multi_gaussian, 
+            fit_function, 
             x, 
             y, 
             p0=p0,
@@ -246,53 +480,11 @@ def fit_peaks(df, n_peaks, column='intensities'):
     except RuntimeError as e:
         raise RuntimeError(f"Fitting failed: {e}")
     
-    # Build peak parameter ufloats using the uncertainties package.
-    peak_params = []
-    sqrt2pi = np.sqrt(2 * np.pi)
-    
-    # Preferred: create correlated ufloats so derived quantities propagate covariance
-    try:
-        correlated = correlated_values(popt, pcov)
-        baseline_u = correlated[0]
-        for i in range(1, len(popt), 3):
-            amp_u = correlated[i]
-            center_u = correlated[i + 1]
-            sigma_u = correlated[i + 2]
-            fwhm_u = 2.355 * sigma_u
-            area_u = amp_u * sigma_u * sqrt2pi
-            peak_params.append({
-                'amplitude': amp_u,
-                'center': center_u,
-                'sigma': sigma_u,
-                'fwhm': fwhm_u,
-                'area': area_u
-            })
-    except Exception:
-        # Fallback: create independent ufloats from sqrt of diagonal of pcov (handle invalid/missing pcov)
-        if pcov is None or pcov.size == 0:
-            perr = np.full_like(popt, np.nan, dtype=float)
-        else:
-            with np.errstate(invalid='ignore'):
-                diag = np.diag(pcov)
-                perr = np.sqrt(np.where(diag >= 0, diag, np.nan))
-    
-        baseline_u = ufloat(float(popt[0]), float(perr[0]) if perr.size > 0 else np.nan)
-        for i in range(1, len(popt), 3):
-            amp_u = ufloat(float(popt[i]), float(perr[i]) if perr.size > i else np.nan)
-            center_u = ufloat(float(popt[i + 1]), float(perr[i + 1]) if perr.size > (i + 1) else np.nan)
-            sigma_u = ufloat(float(popt[i + 2]), float(perr[i + 2]) if perr.size > (i + 2) else np.nan)
-            fwhm_u = 2.355 * sigma_u
-            area_u = amp_u * sigma_u * sqrt2pi
-            peak_params.append({
-                'amplitude': amp_u,
-                'center': center_u,
-                'sigma': sigma_u,
-                'fwhm': fwhm_u,
-                'area': area_u
-            })
+    # Extract peak parameters with uncertainties
+    baseline_u, peak_params = extract_peak_parameters(popt, pcov, peak_function)
     
     # Calculate fitted curve and residuals
-    fitted_curve = multi_gaussian(x, *popt)
+    fitted_curve = fit_function(x, *popt)
     residuals = y - fitted_curve
     
     # Calculate R²
@@ -307,5 +499,6 @@ def fit_peaks(df, n_peaks, column='intensities'):
         'x_values': x,
         'residuals': residuals,
         'r_squared': r_squared,
-        'covariance': pcov
+        'covariance': pcov,
+        'peak_function': peak_function
     }
