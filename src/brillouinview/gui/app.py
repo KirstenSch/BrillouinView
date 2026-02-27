@@ -168,6 +168,7 @@ class BrillouinViewApp(QMainWindow):
 
         self.plot_calibration_peaks()
         self.ui.button_run_calibration.setEnabled(True)
+        self.ui.button_run_calibration.setStyleSheet("background-color: red; color: white;")
         self.ui.cBox_peakfunction.setCurrentText(self.experiment_setup.calibration_peak_function)
 
     def plot_calibration_peaks(self):
@@ -203,6 +204,7 @@ class BrillouinViewApp(QMainWindow):
         self.experiment_setup.calibration_value_unc = delta_channel.std_dev
         self.ui.le_calibration.setText(f"{self.experiment_setup.calibration_value:.6f}")
         self.ui.le_calibration_unc.setText(f"{self.experiment_setup.calibration_value_unc:.6f}")
+        self.ui.button_run_calibration.setStyleSheet("")
 
     def reset_entires(self):
         """Reset all entries, plots, and experiment setup to initial state"""
