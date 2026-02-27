@@ -168,6 +168,7 @@ class BrillouinViewApp(QMainWindow):
 
         self.plot_calibration_peaks()
         self.ui.button_run_calibration.setEnabled(True)
+        self.ui.cBox_peakfunction.setCurrentText(self.experiment_setup.calibration_peak_function)
 
     def plot_calibration_peaks(self):
         cal_data = self.calibration_data

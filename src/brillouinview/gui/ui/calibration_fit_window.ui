@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>981</width>
+    <width>983</width>
     <height>682</height>
    </rect>
   </property>
@@ -21,6 +21,9 @@
      </property>
      <item>
       <widget class="PlotWidget" name="fit_plot" native="true">
+       <property name="enabled">
+        <bool>false</bool>
+       </property>
        <property name="minimumSize">
         <size>
          <width>0</width>
@@ -31,6 +34,9 @@
      </item>
      <item>
       <layout class="QHBoxLayout" name="horizontalLayout_2">
+       <property name="leftMargin">
+        <number>0</number>
+       </property>
        <item>
         <widget class="QTableWidget" name="tableWidget">
          <property name="minimumSize">
@@ -43,6 +49,9 @@
        </item>
        <item>
         <layout class="QVBoxLayout" name="verticalLayout_2">
+         <property name="sizeConstraint">
+          <enum>QLayout::SetDefaultConstraint</enum>
+         </property>
          <property name="rightMargin">
           <number>0</number>
          </property>
@@ -70,18 +79,55 @@
           </widget>
          </item>
          <item>
-          <widget class="QLineEdit" name="le_used_function">
-           <property name="maximumSize">
+          <widget class="QComboBox" name="combo_calfit">
+           <property name="enabled">
+            <bool>false</bool>
+           </property>
+           <property name="acceptDrops">
+            <bool>false</bool>
+           </property>
+           <item>
+            <property name="text">
+             <string>Lorentzian</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>Gaussian</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>Voigt</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>Pseudo Voigt</string>
+            </property>
+           </item>
+          </widget>
+         </item>
+         <item>
+          <spacer name="verticalSpacer_6">
+           <property name="orientation">
+            <enum>Qt::Vertical</enum>
+           </property>
+           <property name="sizeHint" stdset="0">
             <size>
-             <width>200</width>
-             <height>16777215</height>
+             <width>20</width>
+             <height>40</height>
             </size>
            </property>
-           <property name="alignment">
-            <set>Qt::AlignCenter</set>
+          </spacer>
+         </item>
+         <item>
+          <widget class="QPushButton" name="button_recalc_calfit">
+           <property name="enabled">
+            <bool>false</bool>
            </property>
-           <property name="readOnly">
-            <bool>true</bool>
+           <property name="text">
+            <string>Recalculate Fit</string>
            </property>
           </widget>
          </item>
@@ -158,9 +204,9 @@
           </spacer>
          </item>
          <item>
-          <widget class="QPushButton" name="pushButton_2">
+          <widget class="QPushButton" name="button_adjust_calfit">
            <property name="enabled">
-            <bool>false</bool>
+            <bool>true</bool>
            </property>
            <property name="toolTip">
             <string>Adjust the starting parameters of the fit in case the result is not satisfacory</string>

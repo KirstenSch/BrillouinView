@@ -151,7 +151,8 @@ class CalibrationFitWindow(QDialog):
         self.peak_number = self.experiment_setup.calibration_peak_number
         self.ui_calplot.button_cancel_calfit.clicked.connect(self.close)
         self.ui_calplot.button_accept_calfit.clicked.connect(self.apply_calibration_fit)
-    
+        self.ui_calplot.button_adjust_calfit.clicked.connect(self.adjust_calibration_fit)
+
     def start_fit_window(self):
         # --- pre-checks (no threading needed, these are fast) ---
         if not self.file_path.exists():
@@ -164,6 +165,11 @@ class CalibrationFitWindow(QDialog):
             QMessageBox.critical(self, "Error", f"Failed to load calibration data: {e}")
             return
 
+        self.start_fitting()
+        self.ui_calplot.combo_calfit.setCurrentText(self.experiment_setup.calibration_peak_function)
+
+
+    def start_fitting(self):
         # --- show wait dialog and start fitting in background ---
         dialog_text = "Fitting is running, give me a moment ..."
         self.wait_dialog = WaitDialog(self, text=dialog_text)
@@ -177,14 +183,11 @@ class CalibrationFitWindow(QDialog):
         self.worker.start()
         self.wait_dialog.exec_()  # blocks interaction with main window until dialog is closed
 
-
     def on_fitting_done(self, result):
         self.results = result
         self.wait_dialog.accept()
         self.plot_data()
         self.populate_fit_results_table()
-        self.ui_calplot.le_used_function.setText(self.experiment_setup.calibration_peak_function)
-
 
     def on_fitting_error(self, error_msg):
         self.wait_dialog.accept()
@@ -197,7 +200,7 @@ class CalibrationFitWindow(QDialog):
                 return
 
             self.experiment_setup.calibration_peak_parameters = self.get_checked_peak_params()
-            self.experiment_setup.calibration_peak_function = self.ui_calplot.le_used_function.text()
+            self.experiment_setup.calibration_peak_function = self.ui_calplot.combo_calfit.currentText()
             self.experiment_setup.calibration_background = self.results.get('baseline', 0.0)
             self.sig.emit(self.experiment_setup)
             self.close()
@@ -357,6 +360,26 @@ class CalibrationFitWindow(QDialog):
         plotter.plot_individual_peaks(baseline=baseline, checked_indices=checked_indices)
         
         self.ui_calplot.fit_plot.show()
+
+    def adjust_calibration_fit(self):
+        self.ui_calplot.combo_calfit.setEnabled(True)
+        self.ui_calplot.combo_calfit.currentIndexChanged.connect(self.on_parameter_changed)
+        self.ui_calplot.button_recalc_calfit.setEnabled(True) 
+        self.parameter_changed = False
+        self.ui_calplot.button_recalc_calfit.clicked.connect(self.recalculate_fit)
+
+    def on_parameter_changed(self):
+        self.parameter_changed = True
+        self.ui_calplot.button_accept_calfit.setEnabled(False)
+        self.ui_calplot.button_recalc_calfit.setStyleSheet("background-color: red; color: white;")
+
+    def recalculate_fit(self):
+        self.parameter_changed = False
+        self.ui_calplot.button_recalc_calfit.setStyleSheet("")
+        self.experiment_setup.calibration_peak_function = self.ui_calplot.combo_calfit.currentText()
+        self.start_fit_window()
+        self.ui_calplot.button_accept_calfit.setEnabled(True)
+        pass
 
 
 class FittingWorker(QThread):
