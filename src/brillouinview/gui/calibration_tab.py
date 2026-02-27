@@ -1,16 +1,15 @@
 from PyQt5.QtGui import QDoubleValidator
 from PyQt5.QtCore import pyqtSignal
-from PyQt5.QtWidgets import  QDialog, QLineEdit, QMessageBox, QTableWidget, QTableWidgetItem
+from PyQt5.QtWidgets import  QDialog, QLineEdit, QMessageBox, QTableWidgetItem
 from pathlib import Path
 from edit_calibration_settings_ui import Ui_EditCalibrationSettings
 from calibration_fit_window_ui import Ui_CalibrationFitWindow
 from brillouinview.calibration import ExperimentSetup
 from brillouinview.io_fileparsing import read_ghost_file
 from brillouinview.fitting_algorithm import fit_peaks    
-import pyqtgraph as pg
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt, QThread, pyqtSignal
 from brillouinview.fitting_algorithm import gaussian, lorentzian, voigt, pseudo_voigt
-from brillouinview.helping_functions import nominal
+from brillouinview.helping_functions import nominal, WaitDialog
 from brillouinview.plotting_modul import PeakPlotter
 
 class ExperimentSetupWindow(QDialog):
@@ -152,42 +151,56 @@ class CalibrationFitWindow(QDialog):
         self.peak_number = self.experiment_setup.calibration_peak_number
         self.ui_calplot.button_cancel_calfit.clicked.connect(self.close)
         self.ui_calplot.button_accept_calfit.clicked.connect(self.apply_calibration_fit)
-
+    
     def start_fit_window(self):
+        # --- pre-checks (no threading needed, these are fast) ---
         if not self.file_path.exists():
             QMessageBox.critical(self, "Error", "The chosen file does not exist.")
             return
 
         try:
             self.calibration_data, _ = read_ghost_file(self.file_path)
-
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Failed to load calibration data: {e}")
             return
-        
-        # Fit peaks to calibration data
-        try:
-            self.results = fit_peaks(self.calibration_data, n_peaks=self.peak_number, column="intensity", peak_function=self.experiment_setup.calibration_peak_function)
-        except Exception as e:
-            QMessageBox.critical(self, "Error", f"Failed to fit peaks: {e}")
-            return
+
+        # --- show wait dialog and start fitting in background ---
+        dialog_text = "Fitting is running, give me a moment ..."
+        self.wait_dialog = WaitDialog(self, text=dialog_text)
+        self.worker = FittingWorker(
+            self.calibration_data,
+            self.peak_number,
+            self.experiment_setup.calibration_peak_function
+        )
+        self.worker.finished.connect(self.on_fitting_done)
+        self.worker.error.connect(self.on_fitting_error)
+        self.worker.start()
+        self.wait_dialog.exec_()  # blocks interaction with main window until dialog is closed
 
 
+    def on_fitting_done(self, result):
+        self.results = result
+        self.wait_dialog.accept()
         self.plot_data()
         self.populate_fit_results_table()
         self.ui_calplot.le_used_function.setText(self.experiment_setup.calibration_peak_function)
 
-    def apply_calibration_fit(self):
-        if len(self.get_checked_peak_params()) < 2:
-            QMessageBox.warning(self, "Warning", 
-                            "At least two dips must be selected for calibration.")
-            return
 
-        self.experiment_setup.calibration_peak_parameters = self.get_checked_peak_params()
-        self.experiment_setup.calibration_peak_function = self.ui_calplot.le_used_function.text()
-        self.experiment_setup.calibration_background = self.results.get('baseline', 0.0)
-        self.sig.emit(self.experiment_setup)
-        self.close()
+    def on_fitting_error(self, error_msg):
+        self.wait_dialog.accept()
+        QMessageBox.critical(self, "Error", f"Failed to fit peaks: {error_msg}")
+
+    def apply_calibration_fit(self):
+            if len(self.get_checked_peak_params()) < 2:
+                QMessageBox.warning(self, "Warning", 
+                                "At least two dips must be selected for calibration.")
+                return
+
+            self.experiment_setup.calibration_peak_parameters = self.get_checked_peak_params()
+            self.experiment_setup.calibration_peak_function = self.ui_calplot.le_used_function.text()
+            self.experiment_setup.calibration_background = self.results.get('baseline', 0.0)
+            self.sig.emit(self.experiment_setup)
+            self.close()
 
     def populate_fit_results_table(self, use_checkbox=True):
         """
@@ -344,3 +357,26 @@ class CalibrationFitWindow(QDialog):
         plotter.plot_individual_peaks(baseline=baseline, checked_indices=checked_indices)
         
         self.ui_calplot.fit_plot.show()
+
+
+class FittingWorker(QThread):
+    finished = pyqtSignal(object)
+    error = pyqtSignal(str)
+
+    def __init__(self, calibration_data, peak_number, peak_function):
+        super().__init__()
+        self.calibration_data = calibration_data
+        self.peak_number = peak_number
+        self.peak_function = peak_function
+
+    def run(self):
+        try:
+            result = fit_peaks(
+                self.calibration_data,
+                n_peaks=self.peak_number,
+                column="intensity",
+                peak_function=self.peak_function
+            )
+            self.finished.emit(result)
+        except Exception as e:
+            self.error.emit(str(e))
