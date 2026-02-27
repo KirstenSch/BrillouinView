@@ -11,6 +11,7 @@ from PyQt5.QtCore import Qt, QThread, pyqtSignal
 from brillouinview.fitting_algorithm import gaussian, lorentzian, voigt, pseudo_voigt
 from brillouinview.helping_functions import nominal, WaitDialog
 from brillouinview.plotting_modul import PeakPlotter
+import re
 
 class ExperimentSetupWindow(QDialog):
     sig = pyqtSignal(object)
@@ -169,14 +170,15 @@ class CalibrationFitWindow(QDialog):
         self.ui_calplot.combo_calfit.setCurrentText(self.experiment_setup.calibration_peak_function)
 
 
-    def start_fitting(self):
+    def start_fitting(self, starting_params=None):
         # --- show wait dialog and start fitting in background ---
         dialog_text = "Fitting is running, give me a moment ..."
         self.wait_dialog = WaitDialog(self, text=dialog_text)
         self.worker = FittingWorker(
             self.calibration_data,
             self.peak_number,
-            self.experiment_setup.calibration_peak_function
+            self.experiment_setup.calibration_peak_function, 
+            starting_params=starting_params
         )
         self.worker.finished.connect(self.on_fitting_done)
         self.worker.error.connect(self.on_fitting_error)
@@ -205,7 +207,7 @@ class CalibrationFitWindow(QDialog):
             self.sig.emit(self.experiment_setup)
             self.close()
 
-    def populate_fit_results_table(self, use_checkbox=True):
+    def populate_fit_results_table(self, use_checkbox=True, editable=False):
         """
         Populate a QTableWidget with multi-peak fit results.
         
@@ -216,6 +218,11 @@ class CalibrationFitWindow(QDialog):
         fit_results : dict
             Dictionary containing 'params' list with fit parameters for each peak
         """
+        try:
+            self.ui_calplot.tableWidget.itemChanged.disconnect()
+        except TypeError:
+            pass  # not connected yet, that's fine
+
         # Extract parameters list
         params = self.results.get('params', [])
         
@@ -246,6 +253,7 @@ class CalibrationFitWindow(QDialog):
             # Peak number column
             peak_num_item = QTableWidgetItem(str(row + 1))
             peak_num_item.setTextAlignment(Qt.AlignCenter)
+            peak_num_item.setFlags(Qt.ItemIsEnabled)  # Non-editable
             self.ui_calplot.tableWidget.setItem(row, 0, peak_num_item)
             
             # Parameter columns
@@ -260,7 +268,12 @@ class CalibrationFitWindow(QDialog):
                 
                 item = QTableWidgetItem(value_str)
                 item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
+                if editable:
+                    item.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable | Qt.ItemIsEditable)
+                else:
+                    item.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable)
                 self.ui_calplot.tableWidget.setItem(row, col + 1, item)
+                
             if use_checkbox:
                 # Checkbox column (last column)
                 checkbox_item = QTableWidgetItem()
@@ -273,6 +286,9 @@ class CalibrationFitWindow(QDialog):
         
         # Connect itemChanged signal to update plot when checkboxes change
         self.ui_calplot.tableWidget.itemChanged.connect(self.update_plot_on_checkbox)
+
+        if editable:
+            self.ui_calplot.tableWidget.itemChanged.connect(self.on_parameter_changed)
 
     def update_plot_on_checkbox(self, item):
         """
@@ -364,33 +380,77 @@ class CalibrationFitWindow(QDialog):
     def adjust_calibration_fit(self):
         self.ui_calplot.combo_calfit.setEnabled(True)
         self.ui_calplot.combo_calfit.currentIndexChanged.connect(self.on_parameter_changed)
+        self.populate_fit_results_table(use_checkbox=False, editable=True)
         self.ui_calplot.button_recalc_calfit.setEnabled(True) 
-        self.parameter_changed = False
         self.ui_calplot.button_recalc_calfit.clicked.connect(self.recalculate_fit)
 
     def on_parameter_changed(self):
-        self.parameter_changed = True
         self.ui_calplot.button_accept_calfit.setEnabled(False)
         self.ui_calplot.button_recalc_calfit.setStyleSheet("background-color: red; color: white;")
 
     def recalculate_fit(self):
-        self.parameter_changed = False
-        self.ui_calplot.button_recalc_calfit.setStyleSheet("")
         self.experiment_setup.calibration_peak_function = self.ui_calplot.combo_calfit.currentText()
-        self.start_fit_window()
+        starting_params = self.read_fit_params_from_table(table=self.ui_calplot.tableWidget)
+        self.start_fitting(starting_params)
+
         self.ui_calplot.button_accept_calfit.setEnabled(True)
+        self.ui_calplot.button_recalc_calfit.setStyleSheet("")
         pass
 
+    def read_fit_params_from_table(self, table):
+        """
+        Read current parameter values from the table widget.
+
+        Returns:
+        --------
+        list[float] : Flat list of parameter values suitable for use as starting_params in fit_peaks
+        """
+        # Get parameter names from headers (skip "Peak #" in col 0, and "For Cal." if present)
+        headers = [table.horizontalHeaderItem(c).text() for c in range(table.columnCount())]
+        param_names = [h for h in headers if h not in ("Peak #", "For Cal.", "fwhm", "area")]
+
+        num_peaks = table.rowCount()
+        starting_params = []
+
+        for row in range(num_peaks):
+            for col, param_name in enumerate(param_names):
+                item = table.item(row, col + 1)  # +1 to skip "Peak #" column
+                if item is None:
+                    raise ValueError(f"Missing value for peak {row + 1}, parameter '{param_name}'")
+                try:
+                    starting_params.append(self.parse_table_value(item.text()))
+                except ValueError:
+                    raise ValueError(f"Invalid value for peak {row + 1}, parameter '{param_name}': '{item.text()}'")
+
+        return starting_params
+    
+    def parse_table_value(self, text):
+        """
+        Parse a table cell value to float.
+        Handles plain floats and uncertainty strings like '(-1.68+/-0.04)e+04'
+        """
+        text = text.strip()
+        
+        # Match uncertainty format: (-1.68+/-0.04)e+04 or (1.23+/-0.04)
+        match = re.match(r'\(([+-]?\d+\.?\d*)\+/-[\d.]+\)([eE][+-]?\d+)?|([+-]?\d+\.?\d*)\+/-[\d.]+', text)
+        if match:
+            value_str = match.group(1) or match.group(3)
+            exponent = match.group(2) or ''
+            return float(value_str + exponent)
+        
+        # Plain float
+        return float(text)
 
 class FittingWorker(QThread):
     finished = pyqtSignal(object)
     error = pyqtSignal(str)
 
-    def __init__(self, calibration_data, peak_number, peak_function):
+    def __init__(self, calibration_data, peak_number, peak_function, starting_params=None):
         super().__init__()
         self.calibration_data = calibration_data
         self.peak_number = peak_number
         self.peak_function = peak_function
+        self.starting_params = starting_params
 
     def run(self):
         try:
@@ -398,7 +458,8 @@ class FittingWorker(QThread):
                 self.calibration_data,
                 n_peaks=self.peak_number,
                 column="intensity",
-                peak_function=self.peak_function
+                peak_function=self.peak_function,
+                **({"starting_params": self.starting_params} if self.starting_params is not None else {})
             )
             self.finished.emit(result)
         except Exception as e:

@@ -403,7 +403,7 @@ def extract_peak_parameters(popt, pcov, peak_function='Gaussian'):
     return baseline_u, peak_params
 
 
-def fit_peaks(df, n_peaks, peak_function='Gaussian', column='intensities'):
+def fit_peaks(df, n_peaks, peak_function='Gaussian', column='intensities', starting_params=None):
     """Fit n_peaks to spectroscopic data using specified peak function.
     
     Parameters:
@@ -461,18 +461,23 @@ def fit_peaks(df, n_peaks, peak_function='Gaussian', column='intensities'):
             f"Need at least {1 + params_per_peak * n_peaks} points, have {len(x)}"
         )
     
-    # Get initial parameter estimates
-    p0 = estimate_initial_params(x, y, n_peaks, peak_function)
-    
+    # Use user-provided starting params if given and valid, otherwise estimate
+    expected_parameters = params_per_peak * n_peaks  
+    if starting_params is not None and len(starting_params) == expected_parameters:
+        baseline_estimate = np.percentile(y, 75)
+        p0 = [baseline_estimate] + starting_params
+    else:
+        p0 = estimate_initial_params(x, y, n_peaks, peak_function)
+
     # Get bounds
     bounds_lower, bounds_upper = get_bounds(x, y, n_peaks, peak_function)
-    
+
     # Perform the fit
     try:
         popt, pcov = curve_fit(
-            fit_function, 
-            x, 
-            y, 
+            fit_function,
+            x,
+            y,
             p0=p0,
             bounds=(bounds_lower, bounds_upper),
             maxfev=10000
