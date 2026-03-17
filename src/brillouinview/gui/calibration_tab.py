@@ -441,7 +441,12 @@ class CalibrationFitWindow(QDialog):
         # Plain float
         return float(text)
 
+
 class FittingWorker(QThread):
+    # Todo:
+    # Add Abort Button to Wait window. (Stop Thread and return to main window)
+    # Add maximum number of iterations. If Fitting finished withput sucesss, plot anyway and tell operator to give besser starting parameters.
+    
     finished = pyqtSignal(object)
     error = pyqtSignal(str)
 

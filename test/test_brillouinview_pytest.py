@@ -2,19 +2,13 @@
 
 import pytest
 import numpy as np
-from scipy.special import wofz
 import pandas as pd
 import matplotlib.pyplot as plt
 from pathlib import Path
-from uncertainties import ufloat
 from numpy.testing import assert_allclose
-
-from brillouinview.fitting_algorithm import voigt, pseudo_voigt, gaussian, lorentzian
-# Test reading calibration settings from a file
-from brillouinview.calibration import ExperimentSetup, calculate_channel_bshift_factor, ExperimentSetupPublic
+from brillouinview.fitting_algorithm import voigt, pseudo_voigt, gaussian, lorentzian, fit_peaks
+from brillouinview.calibration import calculate_channel_bshift_factor, ExperimentSetupPublic
 from brillouinview.io_fileparsing import experiment_setup_calibration, read_ghost_file
-from brillouinview.fitting_algorithm import fit_peaks, gaussian
-
 
 from brillouinview.fitting_algorithm import fit_peaks
 
@@ -112,6 +106,7 @@ def test_pseudo_voigt_without_eta_center_value_equals_amplitude():
     idx = np.where(np.isclose(x, center))[0]
     assert idx.size == 1
     assert_allclose(pv[idx[0]], amplitude, rtol=1e-8, atol=1e-10)
+
 def test_calibration_settings_read_txt():
     # Create a temporary calibration file
     temp_file = Path("test/files/calibration_settings_old.txt")
@@ -343,6 +338,7 @@ def test_two_random_gaussian_dips_workflow(tmp_path):
         print("="*60)
         print("✓ All parameters match within tolerance!")
 
+
 def test_calculation_calibration_factor():
     exp_setup_test = ExperimentSetupPublic()
     exp_setup_test.calibration_value = 400.0
@@ -360,3 +356,4 @@ def test_calculation_calibration_factor():
     
     # Assert both nominal values are close to expected_value_external
     assert abs(calibration_factor.nominal_value - expected_value_external) / expected_value_external < 1e-6  # relative tolerance
+
