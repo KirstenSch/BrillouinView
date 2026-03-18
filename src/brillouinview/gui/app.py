@@ -1,6 +1,6 @@
 from itertools import count
 from pathlib import Path
-from PyQt5.QtWidgets import QMainWindow, QLineEdit, QFileDialog, QMessageBox
+from PyQt5.QtWidgets import QMainWindow, QLineEdit, QFileDialog, QMessageBox, QDialog
 
 from brillouinview.helping_functions import nominal
 from uncertainties import ufloat
@@ -15,6 +15,8 @@ from brillouinview.gui.calibration_tab import ExperimentSetupWindow, Calibration
 from brillouinview.io_fileparsing import read_ghost_file
 from brillouinview.fitting_algorithm import gaussian
 from PyQt5.QtCore import Qt
+from brillouinview.setup_classes import DACParameters, MachineParameters, ExperimentParameters
+from brillouinview.gui.dac_experiment_setup import SetupExperimentWindow, SetupDACWindow, WelcomeWindow
 
 class BrillouinViewApp(QMainWindow):
     def __init__(self):
@@ -24,7 +26,13 @@ class BrillouinViewApp(QMainWindow):
         self.ui.button_run_calibration.setEnabled(False)
         self.ui.button_start_fit.setEnabled(False)
         
+        #Welcome Window
+        self.run_welcome_window()
+        self.ui.le_dac.setText(self.dac_parameters.dac_name)
+        self.ui.le_experiment.setText("New Experiment")
+
         #calibration tab setup
+        # Todo: exchange ExperimentSetup with CalibrationParameters  
         self.experiment_setup = ExperimentSetup()
         self.ui.button_edit_settings.clicked.connect(self.open_subwindow_experiment_setup)
         self.ui.button_calibration_load_settings.clicked.connect(self.load_experiment_setup)
@@ -33,6 +41,16 @@ class BrillouinViewApp(QMainWindow):
         self.ui.button_run_calibration.clicked.connect(self.calculate_calibration)
         self.ui.button_reset.clicked.connect(self.reset_entires)
         self.init_plot()
+
+    def run_welcome_window(self):
+        dialog = WelcomeWindow(parent=self)
+        if dialog.exec_() == QDialog.Accepted:
+            self.dac_parameters = dialog.dac_parameters
+            self.experiment_parameters = dialog.experiment_parameters
+        else:
+            self.dac_parameters = None
+            self.experiment_parameters = None
+
 
     def init_plot(self):
         self.calibration_data = pd.DataFrame()
@@ -100,7 +118,6 @@ class BrillouinViewApp(QMainWindow):
             value = getattr(self.experiment_setup, key)
             line_edit: QLineEdit = meta["widget"]
             line_edit.setText(str(value))
-
 
     def load_calibration_data(self):
         working_dir = str(Path.cwd().absolute())
