@@ -32,6 +32,9 @@
     <layout class="QGridLayout" name="gridLayout_2">
      <item row="0" column="3">
       <widget class="QLineEdit" name="le_dac_owner">
+       <property name="toolTip">
+        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Enter the name of the owner of the DAC&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+       </property>
        <property name="text">
         <string/>
        </property>
@@ -59,7 +62,11 @@
       </widget>
      </item>
      <item row="0" column="1">
-      <widget class="QLineEdit" name="le_dac_name"/>
+      <widget class="QLineEdit" name="le_dac_name">
+       <property name="toolTip">
+        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Enter Name or ID of the DAC&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+       </property>
+      </widget>
      </item>
      <item row="1" column="0">
       <widget class="QLabel" name="label_3">
@@ -70,6 +77,9 @@
      </item>
      <item row="1" column="1">
       <widget class="QComboBox" name="cb_dac_pressure_medium">
+       <property name="toolTip">
+        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Choose the pressure medium of the DAC. &lt;/p&gt;&lt;p&gt;Might be used for predicting pressure medium peaks in a later version. &lt;/p&gt;&lt;p&gt;If medium is not in the list choose other. &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+       </property>
        <item>
         <property name="text">
          <string>Ne - Neon</string>
@@ -89,6 +99,9 @@
      </item>
      <item row="1" column="3">
       <widget class="QDateEdit" name="date_dac_prep">
+       <property name="toolTip">
+        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Date the DAC was loaded.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+       </property>
        <property name="calendarPopup">
         <bool>true</bool>
        </property>
@@ -229,9 +242,9 @@
   <tabstop>cb_dac_pressure_medium</tabstop>
   <tabstop>date_dac_prep</tabstop>
   <tabstop>bt_add_sample</tabstop>
-  <tabstop>te_dac_notes</tabstop>
   <tabstop>bt_dac_clear_exp</tabstop>
   <tabstop>bt_dac_create_exp</tabstop>
+  <tabstop>te_dac_notes</tabstop>
   <tabstop>scroll_dac_samples</tabstop>
  </tabstops>
  <resources/>

@@ -41,6 +41,9 @@ pyuic5 src/brillouinview/gui/ui/setup_dac_window.ui -o src/setup_dac_window_ui.p
 pyuic5 src/brillouinview/gui/ui/setup_experiment_window.ui -o src/setup_experiment_window_ui.py
 ```
 ```console
+pyuic5 src/brillouinview/gui/ui/setup_brillouin_machine.ui -o src/setup_brillouin_machine_ui.py
+```
+```console
 pyuic5 src/brillouinview/gui/ui/welcome_window.ui -o src/welcome_window_ui.py
 ```
 welcome_window
