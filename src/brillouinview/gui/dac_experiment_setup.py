@@ -21,12 +21,12 @@ class SetupExperimentWindow(QtWidgets.QDialog, Ui_SetupExperiment):
         self.experiment_parameters: ExperimentParameters = None
 
         # Bottom bar buttons
-        self.pushButton_2.clicked.connect(self.on_create_experiment)  # Create Experiment
-        self.pushButton.clicked.connect(self.on_clear_all)             # Clear All
+        self.button_exp_proceed.clicked.connect(self.on_create_experiment)  # Create Experiment
+        self.button_exp_clear.clicked.connect(self.on_clear_all)             # Clear All
 
         # Machine buttons
-        self.pushButton_3.clicked.connect(self.on_create_machine)      # Create New Machine File
-        self.pushButton_4.clicked.connect(self.on_load_machine)        # Use Existing Machine File
+        self.button_exp_machine_new.clicked.connect(self.on_create_machine)      # Create New Machine File
+        self.button_exp_machine.clicked.connect(self.on_load_machine)        # Use Existing Machine File
 
         # Internal machine parameters — set via machine sub-dialogs
         self._machine_parameters: MachineParameters = None
@@ -62,12 +62,12 @@ class SetupExperimentWindow(QtWidgets.QDialog, Ui_SetupExperiment):
             return date(qdate.year(), qdate.month(), qdate.day())
 
         return ExperimentParameters(
-            exp_name=self.lineEdit.text().strip(),
-            exp_operator=self.lineEdit_2.text().strip(),
-            exp_temperature=parse_float(self.lineEdit_3.text()),
-            exp_pressure=parse_float(self.lineEdit_4.text()),
-            exp_date_start=qdate_to_date(self.dateEdit.date()),
-            exp_date_end=qdate_to_date(self.dateEdit_2.date()),
+            exp_name=self.le_exp_name.text().strip(),
+            exp_operator=self.le_exp_operator.text().strip(),
+            exp_temperature=parse_float(self.le_exp_temp.text()),
+            exp_pressure=parse_float(self.le_exp_pressure.text()),
+            exp_date_start=qdate_to_date(self.de_exp_start.date()),
+            exp_date_end=qdate_to_date(self.de_exp_end.date()),
             exp_notes=self.plainTextEdit.toPlainText().strip(),
             exp_machine_parameters=self._machine_parameters,
         )
