@@ -29,7 +29,8 @@ class BrillouinViewApp(QMainWindow):
         #Welcome Window
         self.run_welcome_window()
         self.ui.le_dac.setText(self.dac_parameters.dac_name)
-        self.ui.le_experiment.setText("New Experiment")
+        self.ui.le_experiment.setText(self.experiment_parameters.exp_name)
+        self.ui.le_machine.setText(self.experiment_parameters.exp_machine_parameters.machine_name)
 
         #calibration tab setup
         # Todo: exchange ExperimentSetup with CalibrationParameters  
@@ -94,7 +95,6 @@ class BrillouinViewApp(QMainWindow):
         self.sub = ExperimentSetupWindow(self.experiment_setup)
         self.sub.sig.connect(self.apply_new_setup)
         self.sub.show()
-
 
     def apply_new_setup(self, new_setup):
         ui_fields_dict = {

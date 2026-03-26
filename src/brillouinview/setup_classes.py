@@ -10,8 +10,9 @@ class MachineParameters:
     laser_wavelength_unc: float = None
     spacing: float = None
     spacing_unc: float = None
-    name: str = None
-    location: str = None
+    machine_name: str = None
+    machine_location: str = None
+    machine_notes: str = None
 
 @dataclass
 class DACParameters:
