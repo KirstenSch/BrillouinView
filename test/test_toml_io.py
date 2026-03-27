@@ -113,7 +113,6 @@ def sample(dac, experiment) -> SampleParameters:
         sample_structure      = "hematite",
         sample_notes          = "5 µm flake, annealed",
         sample_experiments    = [experiment],
-        sample_files          = [Path("data/Fe2O3_001_raw.spe")],
     )
 
 

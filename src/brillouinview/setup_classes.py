@@ -46,7 +46,6 @@ class SampleParameters:
     sample_structure: str = None
     sample_notes: str = None
     sample_experiments: list = None
-    sample_files: list = None
 
 @dataclass
 class CalibrationParameters:

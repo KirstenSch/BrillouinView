@@ -376,7 +376,6 @@ def dac_from_toml(
             sample_structure      = _get(s, "sample_structure"),
             sample_notes          = _get(s, "sample_notes"),
             sample_experiments    = resolved_exps or None,
-            sample_files          = None,
         )
         samples.append(sample)
 
