@@ -215,6 +215,10 @@ class SetupDACWindow(QtWidgets.QDialog, Ui_SetupDAC):
 
         self.bt_dac_create_exp.clicked.connect(self.on_create_experiment)
         self.bt_dac_clear_exp.clicked.connect(self.on_clear_all)
+        self.bt_add_sample.clicked.connect(self._add_sample_row)
+
+        # Initialize the samples table inside the scroll area (header + first row)
+        self._init_samples_table()
 
     def on_create_experiment(self):
         """Collect DAC data, then open the experiment setup dialog."""
@@ -248,6 +252,180 @@ class SetupDACWindow(QtWidgets.QDialog, Ui_SetupDAC):
         self.cb_dac_pressure_medium.setCurrentIndex(0)
         self.date_dac_prep.setDate(QtCore.QDate.currentDate())
         self.te_dac_notes.clear()
+        
+        # Clear all sample rows
+        self._sample_rows.clear()
+        self._rebuild_samples_grid()
+        
+        # Add a fresh first row
+        self._add_sample_row()
+
+
+    # --- samples table UI helpers ---------------------------------------
+    def _init_samples_table(self):
+        """Create a simple grid-like table inside the QScrollArea to hold
+        sample rows. Adds a bold header row and one editable sample row.
+        Columns: Number | Name (QLineEdit) | Structure (QComboBox) |
+                 Notes (QLineEdit) | Delete (QPushButton)
+        """
+        # Container widget for scroll area
+        container = QtWidgets.QWidget()
+        # Prevent the container from stretching vertically; keep it compact and anchored
+        container.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum)
+
+        vbox = QtWidgets.QVBoxLayout(container)
+        vbox.setContentsMargins(0, 0, 0, 0)
+        # Anchor contents to the top so they don't distribute vertically
+        vbox.setAlignment(QtCore.Qt.AlignTop)
+
+        grid = QtWidgets.QGridLayout()
+        grid.setHorizontalSpacing(8)
+        grid.setVerticalSpacing(6)
+
+        # Allow Name and Notes columns to expand horizontally
+        grid.setColumnStretch(1, 1)
+        grid.setColumnStretch(3, 2)
+
+        vbox.addLayout(grid)
+        # Make the scroll area show the container
+        self.scroll_dac_samples.setWidgetResizable(True)
+        self.scroll_dac_samples.setWidget(container)
+
+        self._samples_grid = grid
+
+        # Header
+        headers = ["Number", "Name", "Structure", "Notes", "Delete"]
+        for col, text in enumerate(headers):
+            lbl = QtWidgets.QLabel(text)
+            lbl.setStyleSheet("font-weight: bold;")
+            # Left-align header text as requested, vertically centered
+            lbl.setAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
+            grid.addWidget(lbl, 0, col)
+
+        # Ensure header does not stretch vertically
+        grid.setRowStretch(0, 0)
+
+        # Horizontal line separator between header and data rows
+        separator = QtWidgets.QFrame()
+        separator.setFrameShape(QtWidgets.QFrame.HLine)
+        separator.setFrameShadow(QtWidgets.QFrame.Sunken)
+        grid.addWidget(separator, 1, 0, 1, 5)  # span all 5 columns
+        grid.setRowStretch(1, 0)
+
+        # Storage for row widgets
+        self._sample_rows = []
+
+        # Add initial first row
+        self._add_sample_row()
+
+    def _add_sample_row(self):
+        """Append one editable sample row to the grid. Numbering starts at 1."""
+        row_number = len(self._sample_rows) + 1
+
+        # Number label
+        number_lbl = QtWidgets.QLabel(str(row_number))
+        number_lbl.setAlignment(QtCore.Qt.AlignCenter)
+        number_lbl.setSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed)
+
+        # Name (line edit)
+        name_edit = QtWidgets.QLineEdit()
+        name_edit.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
+
+        # Structure (combo box)
+        struct_combo = QtWidgets.QComboBox()
+        struct_combo.addItems(["cubic", "tetragonal", "other"])
+        struct_combo.setSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed)
+
+        # Notes (line edit)
+        notes_edit = QtWidgets.QLineEdit()
+        notes_edit.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
+
+        # Delete button (little X)
+        del_btn = QtWidgets.QPushButton("✖")
+        del_btn.setFixedWidth(24)
+        del_btn.setToolTip("Delete this sample row")
+        del_btn.setSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed)
+
+        # Keep references so we can read/update rows later
+        # Store as a dict to make deletion more robust
+        # Use id() to create a unique identifier that persists even after rebuilds
+        row_id = id(del_btn)  # Use button's id as unique identifier
+        row_data = {
+            'id': row_id,
+            'number_lbl': number_lbl,
+            'name_edit': name_edit,
+            'struct_combo': struct_combo,
+            'notes_edit': notes_edit,
+            'del_btn': del_btn
+        }
+        self._sample_rows.append(row_data)
+
+        # Connect delete button to a closure that captures the row_id
+        # This way, we can always find the correct row by its unique id
+        del_btn.clicked.connect(lambda: self._delete_sample_row_by_id(row_id))
+
+        # Refresh the entire grid layout with current data
+        self._rebuild_samples_grid()
+
+    def _delete_sample_row_by_id(self, row_id):
+        """Delete a sample row by its unique id."""
+        # Find the row with this id
+        row_index = -1
+        for i, row_data in enumerate(self._sample_rows):
+            if row_data['id'] == row_id:
+                row_index = i
+                break
+        
+        if row_index < 0:
+            return
+        
+        # Remove from storage
+        self._sample_rows.pop(row_index)
+
+        # Rebuild the entire grid from scratch with remaining rows
+        self._rebuild_samples_grid()
+
+    def _delete_sample_row(self, row_index):
+        """Delete a sample row by index (0-based), remove it from storage, and rebuild grid."""
+        if row_index < 0 or row_index >= len(self._sample_rows):
+            return
+
+        # Remove from storage
+        self._sample_rows.pop(row_index)
+
+        # Rebuild the entire grid from scratch with remaining rows
+        self._rebuild_samples_grid()
+
+    def _rebuild_samples_grid(self):
+        """Remove all data rows from grid and re-add them in correct positions.
+        This ensures no overlapping or orphaned rows, and fixes numbering."""
+        # Get all items currently in the grid (excluding header row 0 and separator row 1)
+        items_to_remove = []
+        for i in range(2, self._samples_grid.rowCount()):
+            for col in range(self._samples_grid.columnCount()):
+                item = self._samples_grid.itemAtPosition(i, col)
+                if item and item.widget():
+                    items_to_remove.append(item.widget())
+        
+        # Remove all widgets from grid
+        for widget in items_to_remove:
+            self._samples_grid.removeWidget(widget)
+            # Don't delete them here - we're reusing them
+
+        # Re-add all rows from storage
+        for i, row_data in enumerate(self._sample_rows):
+            grid_row = i + 2  # Account for header (row 0) and separator (row 1)
+
+            # Update number label
+            row_data['number_lbl'].setText(str(i + 1))
+
+            # Add all widgets to grid at correct positions
+            self._samples_grid.addWidget(row_data['number_lbl'], grid_row, 0)
+            self._samples_grid.addWidget(row_data['name_edit'], grid_row, 1)
+            self._samples_grid.addWidget(row_data['struct_combo'], grid_row, 2)
+            self._samples_grid.addWidget(row_data['notes_edit'], grid_row, 3)
+            self._samples_grid.addWidget(row_data['del_btn'], grid_row, 4)
+
 
 
 # ---------------------------------------------------------------------------

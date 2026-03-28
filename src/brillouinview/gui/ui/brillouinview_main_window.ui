@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>971</width>
-    <height>1081</height>
+    <height>1062</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -140,7 +140,7 @@
               <item>
                <widget class="QPushButton" name="button_edit_settings">
                 <property name="text">
-                 <string>Edit Settings</string>
+                 <string>Edit Machine Settings</string>
                 </property>
                </widget>
               </item>
