@@ -1,12 +1,14 @@
 from PyQt5 import QtWidgets, QtCore
 from PyQt5.QtGui import QDoubleValidator
-from datetime import date
+from datetime import date, datetime
+from pathlib import Path
 
 from welcome_window_ui import Ui_Prequel_Dialog
 from setup_dac_window_ui import Ui_SetupDAC
 from setup_experiment_window_ui import Ui_SetupExperiment
 from setup_brillouin_machine_ui import Ui_Dialog as Ui_SetupMachine
-from brillouinview.setup_classes import DACParameters, ExperimentParameters, MachineParameters
+from brillouinview.setup_classes import DACParameters, ExperimentParameters, MachineParameters, SampleParameters
+from brillouinview.toml_io import write_dac_toml
 
 # ---------------------------------------------------------------------------
 # SeupBrillouinMachineWindow
@@ -211,6 +213,7 @@ class SetupDACWindow(QtWidgets.QDialog, Ui_SetupDAC):
         self.setupUi(self)
         self.setWindowModality(QtCore.Qt.ApplicationModal)
         self.dac_parameters: DACParameters = None
+        self.sample_list: SampleParameters = None
         self.experiment_parameters: ExperimentParameters = None
 
         self.bt_dac_create_exp.clicked.connect(self.on_create_experiment)
@@ -221,7 +224,8 @@ class SetupDACWindow(QtWidgets.QDialog, Ui_SetupDAC):
         self._init_samples_table()
 
     def on_create_experiment(self):
-        """Collect DAC data, then open the experiment setup dialog."""
+        """Collect DAC data, ask user for directory location, create directory structure,
+        then open the experiment setup dialog."""
         if not self.le_dac_name.text().strip():
             QtWidgets.QMessageBox.warning(self, "Missing Field", "Please enter a DAC name.")
             return
@@ -230,12 +234,98 @@ class SetupDACWindow(QtWidgets.QDialog, Ui_SetupDAC):
             return
 
         self.dac_parameters = self.get_dac_data()
+        self.sample_parameters_list = self.get_sample_data()
+        
+        if not self.sample_parameters_list:
+            QtWidgets.QMessageBox.warning(self, "No Samples", "Please add at least one sample with a name.")
+            return
+
+        # Ask user to select a directory for the DAC folder
+        parent_directory = QtWidgets.QFileDialog.getExistingDirectory(
+            self,
+            "Select directory to create DAC folder",
+            "",
+            options=QtWidgets.QFileDialog.ShowDirsOnly | QtWidgets.QFileDialog.DontResolveSymlinks
+        )
+
+        if not parent_directory:
+            QtWidgets.QMessageBox.information(self, "Cancelled", "DAC directory creation cancelled.")
+            return
+
+        # Create the DAC directory structure
+        try:
+            dac_directory = self._create_dac_directory_structure(parent_directory, self.dac_parameters)
+            self.dac_parameters.dac_directory = dac_directory
+            
+            # Write DAC TOML file
+            dac_toml_path = dac_directory / f"{self.dac_parameters.dac_name.replace(' ', '_')}.toml"
+            write_dac_toml(dac=self.dac_parameters, path=dac_toml_path, samples=self.sample_parameters_list)
+        except Exception as e:
+            QtWidgets.QMessageBox.critical(self, "Error", f"Failed to create DAC directory: {str(e)}")
+            return
 
         exp_dialog = SetupExperimentWindow(parent=self)
         if exp_dialog.exec_() == QtWidgets.QDialog.Accepted:
             self.experiment_parameters = exp_dialog.experiment_parameters
-            self.accept()   
+            self.accept()
+        # If experiment dialog is rejected, stay in DAC dialog (don't close)
 
+    def _create_dac_directory_structure(self, parent_directory: str, dac_params: 'DACParameters') -> Path:
+        """Create DAC directory structure with subdirectories.
+        
+        Directory structure:
+        <parent_directory>/YYYYMMDD_<dac_name>/
+            ├── Calibration/
+            ├── Machine/
+            └── Experiments/
+            └── Samples/
+        
+        Args:
+            parent_directory: Path where the DAC folder will be created
+            dac_params: DACParameters containing the DAC name and date
+            
+        Returns:
+            Path object pointing to the created DAC directory
+        """
+        # Format the directory name with date prefix (YYYYMMDD_dac_name)
+        # Replace spaces with underscores in DAC name
+        date_prefix = dac_params.dac_date_load.strftime("%Y%m%d")
+        dac_name_formatted = dac_params.dac_name.replace(" ", "_")
+        dac_folder_name = f"{date_prefix}_{dac_name_formatted}"
+        
+        # Create the main DAC directory
+        dac_directory = Path(parent_directory) / dac_folder_name
+        dac_directory.mkdir(parents=True, exist_ok=True)
+        
+        # Create subdirectories
+        subdirs = ["Calibration", "Machine", "Experiments", "Samples"]
+        for subdir in subdirs:
+            (dac_directory / subdir).mkdir(parents=True, exist_ok=True)
+        
+        return dac_directory   
+
+    def get_sample_data(self) -> list:
+        """Collect sample data from the samples table and return a list of SampleParameters."""
+        sample_parameters_list = []
+        for row_data in self._sample_rows:
+            sample_name = row_data['name_edit'].text().strip()
+            sample_structure = row_data['struct_combo'].currentText()
+            sample_notes = row_data['notes_edit'].text().strip()
+
+            if not sample_name:
+                continue  # Skip rows without a sample name
+
+            sample_params = SampleParameters(
+                sample_dac_parameters=self.dac_parameters,
+                sample_name=sample_name,
+                sample_structure=sample_structure,
+                sample_notes=sample_notes,
+                sample_experiments=[]  # Will be filled later when experiments are created
+            )
+            sample_parameters_list.append(sample_params)
+        
+        return sample_parameters_list
+    
     def get_dac_data(self) -> DACParameters:
         qdate = self.date_dac_prep.date()
         return DACParameters(

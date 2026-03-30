@@ -7,6 +7,7 @@ from uncertainties import ufloat
 import pandas as pd
 import pyqtgraph as pg
 import numpy as np
+import sys
 from brillouinview_main_window_ui import Ui_MainWindow
 from brillouinview.calibration import ExperimentSetup
 from brillouinview.io_fileparsing import experiment_setup_calibration
@@ -28,6 +29,7 @@ class BrillouinViewApp(QMainWindow):
         
         #Welcome Window
         self.run_welcome_window()
+        
         self.ui.le_dac.setText(self.dac_parameters.dac_name)
         self.ui.le_experiment.setText(self.experiment_parameters.exp_name)
         self.ui.le_machine.setText(self.experiment_parameters.exp_machine_parameters.machine_name)
@@ -49,9 +51,8 @@ class BrillouinViewApp(QMainWindow):
             self.dac_parameters = dialog.dac_parameters
             self.experiment_parameters = dialog.experiment_parameters
         else:
-            self.dac_parameters = None
-            self.experiment_parameters = None
-
+            # User closed the welcome window with X button
+            sys.exit(0)
 
     def init_plot(self):
         self.calibration_data = pd.DataFrame()
