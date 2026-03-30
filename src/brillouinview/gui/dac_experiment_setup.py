@@ -8,7 +8,7 @@ from setup_dac_window_ui import Ui_SetupDAC
 from setup_experiment_window_ui import Ui_SetupExperiment
 from setup_brillouin_machine_ui import Ui_Dialog as Ui_SetupMachine
 from brillouinview.setup_classes import DACParameters, ExperimentParameters, MachineParameters, SampleParameters
-from brillouinview.toml_io import write_dac_toml
+from brillouinview.toml_io import write_dac_toml, write_machine_toml
 
 # ---------------------------------------------------------------------------
 # SeupBrillouinMachineWindow
@@ -143,6 +143,30 @@ class SetupExperimentWindow(QtWidgets.QDialog, Ui_SetupExperiment):
             self._machine_parameters = dialog.machine_parameters
             self.le_exp_machine_display.setText(f"{self._machine_parameters.machine_name} "
                                                 f"at {self._machine_parameters.machine_location or ""}")
+            
+            # Write machine TOML file to dac_directory/Machine/
+            if self.dac_parameters and self.dac_parameters.dac_directory:
+                try:
+                    machine_dir = self.dac_parameters.dac_directory / "Machine"
+                    machine_dir.mkdir(parents=True, exist_ok=True)
+                    
+                    # Create filename from machine_name with underscores instead of spaces
+                    machine_filename = self._machine_parameters.machine_name.replace(" ", "_") + ".toml"
+                    machine_file_path = machine_dir / machine_filename
+                    
+                    write_machine_toml(self._machine_parameters, machine_file_path)
+                    
+                    QtWidgets.QMessageBox.information(
+                        self,
+                        "Machine File Saved",
+                        f"Machine parameters successfully saved to:\n{machine_file_path}"
+                    )
+                except Exception as e:
+                    QtWidgets.QMessageBox.warning(
+                        self,
+                        "Error Saving Machine File",
+                        f"Failed to save machine file: {str(e)}"
+                    )
 
     def on_load_machine(self):
         # TODO: open a file dialog to load a MachineParameters file
