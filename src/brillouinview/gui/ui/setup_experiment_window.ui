@@ -225,7 +225,7 @@
      <item>
       <widget class="QPushButton" name="button_exp_machine">
        <property name="enabled">
-        <bool>false</bool>
+        <bool>true</bool>
        </property>
        <property name="toolTip">
         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Use when a machine file exists. &lt;/p&gt;&lt;p&gt;Choose the file from the browser pop-up.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>

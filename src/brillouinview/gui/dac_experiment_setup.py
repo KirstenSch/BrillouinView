@@ -8,16 +8,21 @@ from setup_dac_window_ui import Ui_SetupDAC
 from setup_experiment_window_ui import Ui_SetupExperiment
 from setup_brillouin_machine_ui import Ui_Dialog as Ui_SetupMachine
 from brillouinview.setup_classes import DACParameters, ExperimentParameters, MachineParameters, SampleParameters
-from brillouinview.toml_io import write_dac_toml, write_machine_toml
+from brillouinview.toml_io import write_dac_toml, write_machine_toml, read_machine_toml
 
 # ---------------------------------------------------------------------------
 # SeupBrillouinMachineWindow
 # ---------------------------------------------------------------------------
 
 class SetupMachineWindow(QtWidgets.QDialog, Ui_SetupMachine):
-    """Modal dialog for machine setup. Returns MachineParameters."""
+    """Modal dialog for machine setup. Returns MachineParameters.
+    
+    Can be used in two modes:
+    - Create mode: Create new machine parameters (default)
+    - Edit mode: Load and edit existing machine parameters
+    """
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, machine_parameters=None):
         super().__init__(parent)
         self.setupUi(self)
         self.setWindowModality(QtCore.Qt.ApplicationModal)
@@ -30,10 +35,48 @@ class SetupMachineWindow(QtWidgets.QDialog, Ui_SetupMachine):
         self.le_machine_mirror.setValidator(validator)
         self.le_machine_mirror_unc.setValidator(validator)
 
-        self.machine_parameters: MachineParameters = None
+        self.machine_parameters: MachineParameters = machine_parameters
+        # self.machine_file_path = machine_file_path  # Path to save to when editing
+
+        # Determine if we're in edit mode
+        self.is_edit_mode = machine_parameters is not None
+
+        # Change button text if editing
+        if self.is_edit_mode:
+            self.button_machine_create.setText("Confirm Parameters")
+            # Populate fields with existing machine parameters
+            self._populate_fields_from_parameters()
+        else:
+            self.button_machine_create.setText("Create Machine")
 
         self.button_machine_create.clicked.connect(self.on_create_machine)
         self.button_machine_clear.clicked.connect(self.on_clear_all)
+
+    def _populate_fields_from_parameters(self):
+        """Populate UI fields with existing machine parameters."""
+        if not self.machine_parameters:
+            return
+        
+        params = self.machine_parameters
+        
+        if params.machine_name:
+            self.le_machine_name.setText(params.machine_name)
+        if params.machine_location:
+            self.le_machine_location.setText(params.machine_location)
+        if params.scattering_angle is not None:
+            self.le_machine_angle.setText(str(params.scattering_angle))
+        if params.scattering_angle_unc is not None:
+            self.le_machine_angle_unc.setText(str(params.scattering_angle_unc))
+        if params.laser_wavelength is not None:
+            self.le_machine_laser.setText(str(params.laser_wavelength))
+        if params.laser_wavelength_unc is not None:
+            self.le_machine_laser_unc.setText(str(params.laser_wavelength_unc))
+        if params.spacing is not None:
+            self.le_machine_mirror.setText(str(params.spacing))
+        if params.spacing_unc is not None:
+            self.le_machine_mirror_unc.setText(str(params.spacing_unc))
+        if params.machine_notes:
+            self.text_machine_notes.setPlainText(params.machine_notes)
 
     # --- main actions --------------------------------------------------
 
@@ -73,6 +116,7 @@ class SetupMachineWindow(QtWidgets.QDialog, Ui_SetupMachine):
             return
 
         self.machine_parameters = self.get_machine_data()
+        
         self.accept()
 
     def get_machine_data(self) -> MachineParameters:
@@ -112,7 +156,7 @@ class SetupMachineWindow(QtWidgets.QDialog, Ui_SetupMachine):
 class SetupExperimentWindow(QtWidgets.QDialog, Ui_SetupExperiment):
     """Modal dialog for experiment setup. Returns ExperimentParameters."""
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, sample_parameters_list=None, dac_parameters=None):
         super().__init__(parent)
         self.setupUi(self)
         self.setWindowModality(QtCore.Qt.ApplicationModal)
@@ -123,6 +167,8 @@ class SetupExperimentWindow(QtWidgets.QDialog, Ui_SetupExperiment):
         self.le_exp_pressure_unc.setValidator(validator)
 
         self.experiment_parameters: ExperimentParameters = None
+        self.sample_parameters_list = sample_parameters_list if sample_parameters_list is not None else []
+        self.dac_parameters = dac_parameters
 
         # Bottom bar buttons
         self.button_exp_proceed.clicked.connect(self.on_create_experiment)  # Create Experiment
@@ -134,6 +180,9 @@ class SetupExperimentWindow(QtWidgets.QDialog, Ui_SetupExperiment):
 
         # Internal machine parameters — set via machine sub-dialogs
         self._machine_parameters: MachineParameters = None
+
+        # Initialize samples table with samples from sample_parameters_list
+        self._init_samples_display()
 
     # --- machine helpers ---------------------------------------------------
 
@@ -169,8 +218,183 @@ class SetupExperimentWindow(QtWidgets.QDialog, Ui_SetupExperiment):
                     )
 
     def on_load_machine(self):
-        # TODO: open a file dialog to load a MachineParameters file
-        pass
+        """Load an existing machine TOML file and open it for editing."""
+        # Ensure DAC parameters and directory are available
+        if not self.dac_parameters or not self.dac_parameters.dac_directory:
+            QtWidgets.QMessageBox.warning(self, "Error", "DAC directory not set. Please create a DAC first.")
+            return
+        
+        # Get the machine directory path
+        machine_directory = self.dac_parameters.dac_directory / "Machine"
+    
+        
+        # Open file dialog
+        file_path, _ = QtWidgets.QFileDialog.getOpenFileName(
+            self,
+            "Select Machine TOML File",
+            str(machine_directory),
+            "TOML Files (*.toml);;All Files (*)"
+        )
+        
+        if not file_path:
+            return  # User cancelled
+        
+        file_path = Path(file_path)
+        
+        # Check if file exists
+        if not file_path.exists():
+            QtWidgets.QMessageBox.warning(self, "File Not Found", f"File not found: {file_path}")
+            return
+        
+        # Try to read the machine TOML file
+        try:
+            machine_parameters = read_machine_toml(file_path)
+        except KeyError as e:
+            QtWidgets.QMessageBox.warning(
+                self,
+                "Invalid Machine File",
+                f"The selected file does not contain valid machine parameters.\nError: {str(e)}"
+            )
+            return
+        except Exception as e:
+            QtWidgets.QMessageBox.warning(
+                self,
+                "Error Reading File",
+                f"Failed to read machine file: {str(e)}"
+            )
+            return
+        
+        # Open SetupMachineWindow in edit mode with the loaded parameters
+        dialog = SetupMachineWindow(parent=self, machine_parameters=machine_parameters)
+        if dialog.exec_() == QtWidgets.QDialog.Accepted:
+            self._machine_parameters = dialog.machine_parameters
+            self.le_exp_machine_display.setText(f"{self._machine_parameters.machine_name} "
+                                                f"at {self._machine_parameters.machine_location or ""}")
+            
+            # Write machine TOML file to dac_directory/Machine/
+            if self.dac_parameters and self.dac_parameters.dac_directory:
+                try:
+                    machine_dir = self.dac_parameters.dac_directory / "Machine"
+                    machine_dir.mkdir(parents=True, exist_ok=True)
+                    
+                    # Create filename from machine_name with underscores instead of spaces
+                    machine_filename = self._machine_parameters.machine_name.replace(" ", "_") + ".toml"
+                    machine_file_path = machine_dir / machine_filename
+                    
+                    write_machine_toml(self._machine_parameters, machine_file_path)
+                    
+                    QtWidgets.QMessageBox.information(
+                        self,
+                        "Machine File Saved",
+                        f"Machine parameters successfully saved to:\n{machine_file_path}"
+                    )
+                except Exception as e:
+                    QtWidgets.QMessageBox.warning(
+                        self,
+                        "Error Saving Machine File",
+                        f"Failed to save machine file: {str(e)}"
+                    )
+
+        
+    # --- samples display helpers ---------------------------------------------------
+
+    def _init_samples_display(self):
+        """Create a grid-like table inside the QScrollArea to display
+        sample rows in read-only mode with checkboxes for selection.
+        Columns: Checkbox | Number | Name | Structure | Notes
+        """
+        # Container widget for scroll area
+        container = QtWidgets.QWidget()
+        container.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum)
+
+        vbox = QtWidgets.QVBoxLayout(container)
+        vbox.setContentsMargins(0, 0, 0, 0)
+        vbox.setAlignment(QtCore.Qt.AlignTop)
+
+        grid = QtWidgets.QGridLayout()
+        grid.setHorizontalSpacing(8)
+        grid.setVerticalSpacing(6)
+
+        # Allow Name and Notes columns to expand horizontally
+        grid.setColumnStretch(2, 1)
+        grid.setColumnStretch(4, 2)
+
+        vbox.addLayout(grid)
+        
+        # Configure scroll area
+        self.scrollArea.setWidgetResizable(True)
+        self.scrollArea.setWidget(container)
+
+        self._samples_grid = grid
+
+        # Header
+        headers = ["Select", "Number", "Name", "Structure", "Notes"]
+        for col, text in enumerate(headers):
+            lbl = QtWidgets.QLabel(text)
+            lbl.setStyleSheet("font-weight: bold;")
+            lbl.setAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
+            grid.addWidget(lbl, 0, col)
+
+        grid.setRowStretch(0, 0)
+
+        # Horizontal line separator between header and data rows
+        separator = QtWidgets.QFrame()
+        separator.setFrameShape(QtWidgets.QFrame.HLine)
+        separator.setFrameShadow(QtWidgets.QFrame.Sunken)
+        grid.addWidget(separator, 1, 0, 1, 5)
+        grid.setRowStretch(1, 0)
+
+        # Storage for row widgets
+        self._sample_display_rows = []
+
+        # Populate with sample data
+        for sample_params in self.sample_parameters_list:
+            self._add_sample_display_row(sample_params)
+
+    def _add_sample_display_row(self, sample_params: SampleParameters):
+        """Add a read-only display row for a sample with a checkbox for selection."""
+        row_number = len(self._sample_display_rows) + 1
+
+        # Checkbox for selection (editable, default True)
+        checkbox = QtWidgets.QCheckBox()
+        checkbox.setChecked(True)
+        checkbox.setSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed)
+
+        # Number label
+        number_lbl = QtWidgets.QLabel(str(row_number))
+        number_lbl.setAlignment(QtCore.Qt.AlignCenter)
+        number_lbl.setSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed)
+
+        # Name (read-only label)
+        name_lbl = QtWidgets.QLabel(sample_params.sample_name)
+        name_lbl.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
+
+        # Structure (read-only label)
+        struct_lbl = QtWidgets.QLabel(sample_params.sample_structure)
+        struct_lbl.setSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed)
+
+        # Notes (read-only label)
+        notes_lbl = QtWidgets.QLabel(sample_params.sample_notes)
+        notes_lbl.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
+
+        # Store row data
+        row_data = {
+            'checkbox': checkbox,
+            'number_lbl': number_lbl,
+            'name_lbl': name_lbl,
+            'struct_lbl': struct_lbl,
+            'notes_lbl': notes_lbl,
+            'sample_params': sample_params
+        }
+        self._sample_display_rows.append(row_data)
+
+        # Add to grid
+        grid_row = len(self._sample_display_rows) + 1  # Account for header (row 0) and separator (row 1)
+        self._samples_grid.addWidget(checkbox, grid_row, 0)
+        self._samples_grid.addWidget(number_lbl, grid_row, 1)
+        self._samples_grid.addWidget(name_lbl, grid_row, 2)
+        self._samples_grid.addWidget(struct_lbl, grid_row, 3)
+        self._samples_grid.addWidget(notes_lbl, grid_row, 4)
 
     # --- main actions ------------------------------------------------------
 
@@ -188,7 +412,29 @@ class SetupExperimentWindow(QtWidgets.QDialog, Ui_SetupExperiment):
             return
 
         self.experiment_parameters = self.get_experiment_data()
+        for sample_params in self.sample_parameters_list:
+            sample_params.sample_experiments.append(self.experiment_parameters.exp_name)
+            
+        self.create_experiment_directory()
+        dac_toml_path = self.dac_parameters.dac_directory / f"{self.dac_parameters.dac_name.replace(' ', '_')}.toml"
+        write_dac_toml(dac=self.dac_parameters, 
+                       path=dac_toml_path, 
+                       samples=self.sample_parameters_list, 
+                       experiments=[self.experiment_parameters])
         self.accept()
+
+
+
+    def create_experiment_directory(self):
+        if not self.dac_parameters or not self.dac_parameters.dac_directory:
+            return
+        
+        experiments_dir = self.dac_parameters.dac_directory / "Experiments"
+        experiments_dir.mkdir(parents=True, exist_ok=True)
+
+        exp_dir_name = self.experiment_parameters.exp_name.replace(" ", "_")
+        exp_directory = experiments_dir / exp_dir_name
+        exp_directory.mkdir(parents=True, exist_ok=True)
 
     def get_experiment_data(self) -> ExperimentParameters:
         def parse_float(text):
@@ -213,13 +459,15 @@ class SetupExperimentWindow(QtWidgets.QDialog, Ui_SetupExperiment):
 
 
     def on_clear_all(self):
-        self.lineEdit.clear()
-        self.lineEdit_2.clear()
-        self.lineEdit_3.clear()
-        self.lineEdit_4.clear()
-        self.lineEdit_5.clear()
-        self.dateEdit.setDate(QtCore.QDate.currentDate())
-        self.dateEdit_2.setDate(QtCore.QDate.currentDate())
+        self.le_exp_name.clear()
+        self.le_exp_operator.clear()
+        self.le_exp_temp.clear()
+        self.le_exp_temp_unc.clear()
+        self.le_exp_pressure.clear()
+        self.le_exp_pressure_unc.clear()
+        self.le_exp_machine_display.clear()
+        self.de_exp_start.setDate(QtCore.QDate.currentDate())
+        self.de_exp_end.setDate(QtCore.QDate.currentDate())
         self.plainTextEdit.clear()
         self._machine_parameters = None
 
@@ -256,13 +504,15 @@ class SetupDACWindow(QtWidgets.QDialog, Ui_SetupDAC):
         if not self.le_dac_owner.text().strip():
             QtWidgets.QMessageBox.warning(self, "Missing Field", "Please enter a DAC owner.")
             return
-
-        self.dac_parameters = self.get_dac_data()
+        
         self.sample_parameters_list = self.get_sample_data()
         
         if not self.sample_parameters_list:
             QtWidgets.QMessageBox.warning(self, "No Samples", "Please add at least one sample with a name.")
             return
+
+        self.dac_parameters = self.get_dac_data()
+
 
         # Ask user to select a directory for the DAC folder
         parent_directory = QtWidgets.QFileDialog.getExistingDirectory(
@@ -288,7 +538,7 @@ class SetupDACWindow(QtWidgets.QDialog, Ui_SetupDAC):
             QtWidgets.QMessageBox.critical(self, "Error", f"Failed to create DAC directory: {str(e)}")
             return
 
-        exp_dialog = SetupExperimentWindow(parent=self)
+        exp_dialog = SetupExperimentWindow(parent=self, sample_parameters_list=self.sample_parameters_list, dac_parameters=self.dac_parameters)
         if exp_dialog.exec_() == QtWidgets.QDialog.Accepted:
             self.experiment_parameters = exp_dialog.experiment_parameters
             self.accept()
@@ -358,6 +608,7 @@ class SetupDACWindow(QtWidgets.QDialog, Ui_SetupDAC):
             dac_pressuremedium=self.cb_dac_pressure_medium.currentText(),
             dac_date_load=date(qdate.year(), qdate.month(), qdate.day()),
             dac_notes=self.te_dac_notes.toPlainText().strip(),
+            dac_samples=[sample.sample_name for sample in self.sample_parameters_list]
         )
 
     def on_clear_all(self):

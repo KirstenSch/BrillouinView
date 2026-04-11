@@ -275,6 +275,19 @@ def dac_to_toml(
     _set(t, "dac_date_load",      dac.dac_date_load)
     _set(t, "dac_owner",          dac.dac_owner)
     _set(t, "dac_notes",          dac.dac_notes)
+    
+    # Sample references — names only, no duplication
+    if dac.dac_samples:
+        names = []
+        for s in dac.dac_samples:
+            if isinstance(s, SampleParameters):
+                names.append(s.sample_name)
+            else:
+                names.append(str(s))   # already a name string
+        _set(t, "dac_samples", names, "→ samples[*].sample_name")
+    else:
+        t.add(comment(" dac_samples = <not set>"))
+    
     doc.add("dac", t)
     doc.add(nl())
 
@@ -379,7 +392,15 @@ def dac_from_toml(
         )
         samples.append(sample)
 
-    dac.dac_samples     = samples     or None
+    # Build lookup for dac → sample resolution
+    sample_by_name: dict[str, SampleParameters] = {
+        s.sample_name: s for s in samples if s.sample_name
+    }
+
+    # Resolve dac_samples name list → objects
+    dac_sample_names = list(d.get("dac_samples") or [])
+    resolved_samples = [sample_by_name[n] for n in dac_sample_names if n in sample_by_name]
+    dac.dac_samples     = resolved_samples or None
     dac.dac_experiments = experiments or None
 
     return dac, machines, samples, experiments

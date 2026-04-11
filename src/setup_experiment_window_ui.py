@@ -118,7 +118,7 @@ class Ui_SetupExperiment(object):
         self.horizontalLayout_2 = QtWidgets.QHBoxLayout()
         self.horizontalLayout_2.setObjectName("horizontalLayout_2")
         self.button_exp_machine = QtWidgets.QPushButton(SetupExperiment)
-        self.button_exp_machine.setEnabled(False)
+        self.button_exp_machine.setEnabled(True)
         self.button_exp_machine.setObjectName("button_exp_machine")
         self.horizontalLayout_2.addWidget(self.button_exp_machine)
         self.button_exp_machine_new = QtWidgets.QPushButton(SetupExperiment)
