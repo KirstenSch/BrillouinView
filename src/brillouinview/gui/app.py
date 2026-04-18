@@ -58,65 +58,6 @@ class BrillouinViewApp(QMainWindow):
         self.ui.graph.setLabel('bottom', 'Channel', size=14)
         self.ui.graph.showGrid(x=True, y=True)
 
-    def load_experiment_setup(self):
-        working_dir = str(Path.cwd().absolute())
-        file_name = QFileDialog.getOpenFileName(self, 'Choose Settings File', 
-         working_dir,"YAML files (*.yaml *.yml);;Text files (*.txt)")
-        file_path = Path(file_name[0])
-        
-        if not file_path.exists():
-            QMessageBox.critical(self, "Error", "The chosen file does not exist.")
-            return
-            
-        experiment_setup_read = experiment_setup_calibration(file_path)  
-
-        # Copy all public attributes from the loaded ExperimentSetup into the current one,
-        # leaving any attributes that aren't present in the loaded object unchanged.
-        if hasattr(experiment_setup_read, "__dict__"):
-            for key, val in vars(experiment_setup_read).items():
-                setattr(self.experiment_setup, key, val)
-        else:
-            for attr in dir(experiment_setup_read):
-                if attr.startswith("_"):
-                    continue
-                try:
-                    val = getattr(experiment_setup_read, attr)
-                except AttributeError:
-                    continue
-                if callable(val):
-                    continue
-                setattr(self.experiment_setup, attr, val)
-        
-        self.open_subwindow_experiment_setup()
-
-    def open_subwindow_experiment_setup(self):
-        self.sub = ExperimentSetupWindow(self.experiment_setup)
-        self.sub.sig.connect(self.apply_new_setup)
-        self.sub.show()
-
-    def apply_new_setup(self, new_setup):
-        ui_fields_dict = {
-            "scattering_angle": {"widget": self.ui.le_angle, "type": float},
-            "scattering_angle_unc": {"widget": self.ui.le_angle_unc, "type": float},
-            "laser_wavelength": {"widget": self.ui.le_wavelength, "type": float},
-            "laser_wavelength_unc": {"widget": self.ui.le_wavelength_unc, "type": float},
-            "spacing": {"widget": self.ui.le_spacing, "type": float},
-            "spacing_unc": {"widget": self.ui.le_spacing_unc, "type": float},
-            "calibration_value": {"widget": self.ui.le_calibration, "type": float},
-            "calibration_value_unc": {"widget": self.ui.le_calibration_unc, "type": float},
-        }
-        
-        # Update only the specified fields from new_setup to experiment_setup
-        for key in ui_fields_dict.keys():
-            if hasattr(new_setup, key):
-                setattr(self.experiment_setup, key, getattr(new_setup, key))
-        
-        # Update UI widgets with current experiment_setup values
-        for key, meta in ui_fields_dict.items():
-            value = getattr(self.experiment_setup, key)
-            line_edit: QLineEdit = meta["widget"]
-            line_edit.setText(str(value))
-
     def load_calibration_data(self):
         working_dir = str(Path.cwd().absolute())
         file_name = QFileDialog.getOpenFileName(self, 'Choose Calibration Data File', 

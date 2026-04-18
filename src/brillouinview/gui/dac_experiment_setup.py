@@ -8,7 +8,7 @@ from setup_dac_window_ui import Ui_SetupDAC
 from setup_experiment_window_ui import Ui_SetupExperiment
 from setup_brillouin_machine_ui import Ui_Dialog as Ui_SetupMachine
 from brillouinview.setup_classes import DACParameters, ExperimentParameters, MachineParameters, SampleParameters
-from brillouinview.toml_io import write_dac_toml, write_machine_toml, read_machine_toml
+from brillouinview.toml_io import write_dac_toml, write_machine_toml, read_machine_toml, read_dac_toml
 
 # ---------------------------------------------------------------------------
 # SeupBrillouinMachineWindow
@@ -419,10 +419,9 @@ class SetupExperimentWindow(QtWidgets.QDialog, Ui_SetupExperiment):
                           path=dac_toml_path, 
                           samples=self.sample_parameters_list, 
                           experiments=[self.experiment_parameters],
+                          machine=[self._machine_parameters],
                           parent_widget=self):
             self.accept()
-
-
 
     def create_experiment_directory(self):
         if not self.dac_parameters or not self.dac_parameters.dac_directory:
@@ -532,7 +531,10 @@ class SetupDACWindow(QtWidgets.QDialog, Ui_SetupDAC):
             
             # Write DAC TOML file
             dac_toml_path = dac_directory / f"{self.dac_parameters.dac_name.replace(' ', '_')}.toml"
-            write_dac_toml(dac=self.dac_parameters, path=dac_toml_path, samples=self.sample_parameters_list, parent_widget=self)
+            write_dac_toml(dac=self.dac_parameters, 
+                           path=dac_toml_path, 
+                           samples=self.sample_parameters_list, 
+                           parent_widget=self)
         except Exception as e:
             QtWidgets.QMessageBox.critical(self, "Error", f"Failed to create DAC directory: {str(e)}")
             return
@@ -793,6 +795,63 @@ class SetupDACWindow(QtWidgets.QDialog, Ui_SetupDAC):
 
 
 # ---------------------------------------------------------------------------
+# ExperimentChoiceDialog
+# ---------------------------------------------------------------------------
+
+class ExperimentChoiceDialog(QtWidgets.QDialog):
+    """Dialog for user to choose an experiment from a list."""
+    
+    def __init__(self, experiments, parent=None):
+        super().__init__(parent)
+        self.experiments = experiments
+        self.selected_experiment = None
+        self.setWindowTitle("Choose Experiment")
+        self.setWindowModality(QtCore.Qt.ApplicationModal)
+        self.setGeometry(200, 200, 400, 300)
+        
+        # Create layout
+        layout = QtWidgets.QVBoxLayout()
+        
+        # Label
+        label = QtWidgets.QLabel("Available experiments:")
+        layout.addWidget(label)
+        
+        # List widget
+        self.list_widget = QtWidgets.QListWidget()
+        for exp in experiments:
+            exp_name = exp.exp_name if exp.exp_name else "<No name>"
+            self.list_widget.addItem(exp_name)
+        layout.addWidget(self.list_widget)
+        
+        # Button layout
+        button_layout = QtWidgets.QHBoxLayout()
+        confirm_btn = QtWidgets.QPushButton("Choose Experiment")
+        cancel_btn = QtWidgets.QPushButton("Cancel")
+        
+        confirm_btn.clicked.connect(self.on_confirm)
+        cancel_btn.clicked.connect(self.reject)
+        
+        button_layout.addWidget(confirm_btn)
+        button_layout.addWidget(cancel_btn)
+        layout.addLayout(button_layout)
+        
+        self.setLayout(layout)
+    
+    def on_confirm(self):
+        """Handle confirm button click."""
+        if self.list_widget.currentRow() < 0:
+            QtWidgets.QMessageBox.warning(self, "No Selection", "Please select an experiment.")
+            return
+        
+        self.selected_experiment = self.experiments[self.list_widget.currentRow()]
+        self.accept()
+    
+    def get_selected_experiment(self):
+        """Return the selected experiment."""
+        return self.selected_experiment
+
+
+# ---------------------------------------------------------------------------
 # WelcomeWindow
 # ---------------------------------------------------------------------------
 
@@ -805,6 +864,7 @@ class WelcomeWindow(QtWidgets.QDialog, Ui_Prequel_Dialog):
         self.setWindowModality(QtCore.Qt.ApplicationModal)
         self.dac_parameters: DACParameters = None
         self.experiment_parameters: ExperimentParameters = None
+        self.machine_parameters: MachineParameters = None
 
         self.button_new_dac.clicked.connect(self.on_new_dac)
         self.button_load_dac.clicked.connect(self.on_load_dac)
@@ -816,6 +876,8 @@ class WelcomeWindow(QtWidgets.QDialog, Ui_Prequel_Dialog):
         if dialog.exec_() == QtWidgets.QDialog.Accepted:
             self.dac_parameters = dialog.dac_parameters
             self.experiment_parameters = dialog.experiment_parameters
+            self.machine_parameters = dialog.machine_parameters
+
             self.accept()   # propagate up to BrillouinViewApp
 
     def on_load_dac(self):
@@ -823,8 +885,47 @@ class WelcomeWindow(QtWidgets.QDialog, Ui_Prequel_Dialog):
         pass
 
     def on_load_experiment(self):
-        # TODO: load existing ExperimentParameters from file
-        pass
+        """Load experiment from an existing DAC TOML file."""
+        # Step 1: Open file browser to choose TOML file
+        working_dir = str(Path.cwd().absolute())
+        file_name = QtWidgets.QFileDialog.getOpenFileName(
+            self, 
+            'Choose DAC toml file', 
+            working_dir,
+            "TOML files (*.toml);;All Files (*)"
+        )
+        
+        file_path = Path(file_name[0])
+        
+        if not file_path.exists():
+            QtWidgets.QMessageBox.critical(self, "Error", "The chosen file does not exist.")
+            return
+        
+        try:
+            # Step 2: Read the file and create DACParameters
+            dac, machines, samples, experiments = read_dac_toml(file_path)
+        except Exception as e:
+            QtWidgets.QMessageBox.critical(self, "Error", f"Failed to load DAC file: {e}")
+            return
+        
+        if not experiments:
+            QtWidgets.QMessageBox.critical(self, "Error", "No experiments found in the DAC file.")
+            return
+        
+        # Step 3: Present a window for user to choose an experiment
+        dialog = ExperimentChoiceDialog(experiments, parent=self)
+        if dialog.exec_() == QtWidgets.QDialog.Accepted:
+            # Step 4: Get the selected experiment and create ExperimentParameters
+            selected_experiment = dialog.get_selected_experiment()
+            
+            # Step 5: Report back to WelcomeWindow and proceed
+            self.dac_parameters = dac
+            self.experiment_parameters = selected_experiment
+            self.machine_parameters = machines[0] if machines else None
+            self.accept()  # propagate up to BrillouinViewApp
+        else:
+            # User cancelled the experiment selection
+            return
 
     def on_read_manual(self):
         # TODO: open manual
