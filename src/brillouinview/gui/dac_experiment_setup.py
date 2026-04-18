@@ -448,7 +448,9 @@ class SetupExperimentWindow(QtWidgets.QDialog, Ui_SetupExperiment):
             exp_name=self.le_exp_name.text().strip(),
             exp_operator=self.le_exp_operator.text().strip(),
             exp_temperature=parse_float(self.le_exp_temp.text()),
+            exp_temperature_unc=parse_float(self.le_exp_temp_unc.text()),
             exp_pressure=parse_float(self.le_exp_pressure.text()),
+            exp_pressure_unc=parse_float(self.le_exp_pressure_unc.text()),
             exp_date_start=qdate_to_date(self.de_exp_start.date()),
             exp_date_end=qdate_to_date(self.de_exp_end.date()),
             exp_notes=self.plainTextEdit.toPlainText().strip(),
@@ -751,17 +753,6 @@ class SetupDACWindow(QtWidgets.QDialog, Ui_SetupDAC):
         # Rebuild the entire grid from scratch with remaining rows
         self._rebuild_samples_grid()
 
-    def _delete_sample_row(self, row_index):
-        """Delete a sample row by index (0-based), remove it from storage, and rebuild grid."""
-        if row_index < 0 or row_index >= len(self._sample_rows):
-            return
-
-        # Remove from storage
-        self._sample_rows.pop(row_index)
-
-        # Rebuild the entire grid from scratch with remaining rows
-        self._rebuild_samples_grid()
-
     def _rebuild_samples_grid(self):
         """Remove all data rows from grid and re-add them in correct positions.
         This ensures no overlapping or orphaned rows, and fixes numbering."""
@@ -825,14 +816,14 @@ class ExperimentChoiceDialog(QtWidgets.QDialog):
         
         # Button layout
         button_layout = QtWidgets.QHBoxLayout()
-        confirm_btn = QtWidgets.QPushButton("Choose Experiment")
         cancel_btn = QtWidgets.QPushButton("Cancel")
-        
+        confirm_btn = QtWidgets.QPushButton("Choose Experiment")
+
         confirm_btn.clicked.connect(self.on_confirm)
         cancel_btn.clicked.connect(self.reject)
-        
+
+        button_layout.addWidget(cancel_btn)        
         button_layout.addWidget(confirm_btn)
-        button_layout.addWidget(cancel_btn)
         layout.addLayout(button_layout)
         
         self.setLayout(layout)
