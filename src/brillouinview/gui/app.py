@@ -46,7 +46,7 @@ class BrillouinViewApp(QMainWindow):
         if dialog.exec_() == QDialog.Accepted:
             self.dac_parameters = dialog.dac_parameters
             self.experiment_parameters = dialog.experiment_parameters
-            self.machine_parameters = dialog.machine_parameters
+            self.machine_parameters = dialog.experiment_parameters.exp_machine_parameters
         else:
             # User closed the welcome window with X button
             sys.exit(0)

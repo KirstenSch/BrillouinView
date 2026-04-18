@@ -455,7 +455,7 @@ class SetupExperimentWindow(QtWidgets.QDialog, Ui_SetupExperiment):
             exp_date_end=qdate_to_date(self.de_exp_end.date()),
             exp_notes=self.plainTextEdit.toPlainText().strip(),
             exp_machine_parameters=self._machine_parameters,
-        )
+        ) 
 
 
     def on_clear_all(self):
@@ -867,8 +867,7 @@ class WelcomeWindow(QtWidgets.QDialog, Ui_Prequel_Dialog):
         if dialog.exec_() == QtWidgets.QDialog.Accepted:
             self.dac_parameters = dialog.dac_parameters
             self.experiment_parameters = dialog.experiment_parameters
-            self.machine_parameters = dialog.machine_parameters
-
+            self.machine_parameters = dialog.experiment_parameters.exp_machine_parameters
             self.accept()   # propagate up to BrillouinViewApp
 
     def on_load_dac(self):
@@ -912,7 +911,6 @@ class WelcomeWindow(QtWidgets.QDialog, Ui_Prequel_Dialog):
             # Step 5: Report back to WelcomeWindow and proceed
             self.dac_parameters = dac
             self.experiment_parameters = selected_experiment
-            self.machine_parameters = machines[0] if machines else None
             self.accept()  # propagate up to BrillouinViewApp
         else:
             # User cancelled the experiment selection

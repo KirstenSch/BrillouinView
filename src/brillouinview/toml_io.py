@@ -446,11 +446,18 @@ def dac_from_toml(
         machine = _machine_from_dict(m)
         machines.append(machine)
 
+    # Build lookup for machine → resolution by machine_name
+    machine_by_name: dict[str, MachineParameters] = {
+        m.machine_name: m for m in machines if m.machine_name
+    }
+
     # Experiments — resolve exp_machine name → object
     experiments: list[ExperimentParameters] = []
     for e in doc.get("experiments", []):
+        exp_machine_name = _get(e, "exp_machine")
+        resolved_machine = machine_by_name.get(exp_machine_name) if exp_machine_name else None
         exp = ExperimentParameters(
-            exp_machine_parameters = _get(e, "exp_machine"),
+            exp_machine_parameters = resolved_machine,
             exp_name               = _get(e, "exp_name"),
             exp_operator           = _get(e, "exp_operator"),
             exp_notes              = _get(e, "exp_notes"),
