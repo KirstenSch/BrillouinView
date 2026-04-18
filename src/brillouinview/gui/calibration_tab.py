@@ -9,10 +9,11 @@ import pyqtgraph as pg
 from PyQt5.QtCore import Qt
 from brillouinview.fitting_algorithm import gaussian
 from brillouinview.helping_functions import nominal
+from brillouinview.setup_classes import CalibrationParameters
 
 class CalibrationFitWindow(QDialog):
     sig = pyqtSignal(object)
-    def __init__(self, experiment_setup: ExperimentSetup):
+    def __init__(self, experiment_setup: CalibrationParameters):
         super().__init__()
         self.ui_calplot = Ui_CalibrationFitWindow()
         self.ui_calplot.setupUi(self)

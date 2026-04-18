@@ -29,9 +29,6 @@ In a next step convert the *.ui file to a *.py file with the following command:
 pyuic5 src/brillouinview/gui/ui/brillouinview_main_window.ui -o src/brillouinview_main_window_ui.py  
 ```
 ```console
-pyuic5 src/brillouinview/gui/ui/edit_calibration_settings.ui -o src/edit_calibration_settings_ui.py
-```
-```console
 pyuic5 src/brillouinview/gui/ui/calibration_fit_window_ui.ui -o src/calibration_fit_window_ui.py
 ```
 ```console
