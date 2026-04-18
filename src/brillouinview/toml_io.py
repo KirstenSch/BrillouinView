@@ -38,6 +38,12 @@ import tomlkit
 from tomlkit import comment, document, nl, table
 from tomlkit.items import Table
 
+try:
+    from PyQt5 import QtWidgets
+    HAS_QT = True
+except ImportError:
+    HAS_QT = False
+
 from brillouinview.setup_classes import (
     CalibrationParameters,
     DACParameters,
@@ -45,6 +51,99 @@ from brillouinview.setup_classes import (
     MachineParameters,
     SampleParameters,
 )
+
+
+# ---------------------------------------------------------------------------
+# File handling utilities
+# ---------------------------------------------------------------------------
+
+def handle_file_overwrite(file_path: Path, parent_widget=None) -> tuple[bool, Path]:
+    """
+    Check if a file exists and prompt user for action via dialog.
+    
+    If the file exists, shows a dialog with two options:
+        1. Overwrite - proceeding with writing to the existing path
+        2. Change Name - user selects a new file path via Save dialog
+    
+    If file doesn't exist, returns (True, file_path) to proceed immediately.
+    
+    Parameters
+    ----------
+    file_path : Path
+        The target file path to check
+    parent_widget : QWidget, optional
+        Parent widget for dialog (if using Qt)
+    
+    Returns
+    -------
+    tuple[bool, Path]
+        (proceed, final_path) where:
+        - proceed: True if user chose to proceed, False if cancelled
+        - final_path: Path to write to (may differ if user chose "Change Name")
+    
+    Examples
+    --------
+    >>> proceed, path = handle_file_overwrite(Path("data.toml"))
+    >>> if proceed:
+    ...     write_machine_toml(params, path)
+    """
+    file_path = Path(file_path)
+    
+    # If file doesn't exist, no need to check
+    if not file_path.exists():
+        return True, file_path
+    
+    # File exists - show dialog if Qt is available
+    if not HAS_QT or parent_widget is None:
+        # Fallback if Qt not available or no parent widget
+        print(f"Warning: File already exists at {file_path}")
+        return True, file_path
+    
+    # Create dialog with two buttons
+    dialog = QtWidgets.QMessageBox(parent_widget)
+    dialog.setWindowTitle("File Already Exists")
+    dialog.setText(f"The file already exists:\n\n{file_path}")
+    dialog.setInformativeText("What would you like to do?")
+    
+    # Add custom buttons
+    overwrite_btn = dialog.addButton("Overwrite", QtWidgets.QMessageBox.DestructiveRole)
+    change_name_btn = dialog.addButton("Change Name", QtWidgets.QMessageBox.ActionRole)
+    cancel_btn = dialog.addButton("Cancel", QtWidgets.QMessageBox.RejectRole)
+    
+    dialog.setDefaultButton(cancel_btn)
+    dialog.exec_()
+    
+    clicked_btn = dialog.clickedButton()
+    
+    if clicked_btn == overwrite_btn:
+        # User chose to overwrite
+        return True, file_path
+    
+    elif clicked_btn == change_name_btn:
+        # User chose to change name - show file save dialog
+        file_dialog = QtWidgets.QFileDialog(parent_widget)
+        file_dialog.setDefaultFileName(file_path.name)
+        file_dialog.setDirectory(str(file_path.parent))
+        file_dialog.setAcceptMode(QtWidgets.QFileDialog.AcceptSave)
+        
+        # Set file type filter based on file extension
+        if file_path.suffix.lower() == ".toml":
+            file_dialog.setNameFilters(["TOML Files (*.toml)", "All Files (*)"])
+        elif file_path.suffix.lower() == ".yaml" or file_path.suffix.lower() == ".yml":
+            file_dialog.setNameFilters(["YAML Files (*.yaml *.yml)", "All Files (*)"])
+        else:
+            file_dialog.setNameFilters([f"Files (*{file_path.suffix})", "All Files (*)"])
+        
+        if file_dialog.exec_() == QtWidgets.QFileDialog.Accepted:
+            new_path = Path(file_dialog.selectedFiles()[0])
+            return True, new_path
+        else:
+            # User cancelled the save dialog
+            return False, file_path
+    
+    else:
+        # User clicked Cancel or closed dialog
+        return False, file_path
 
 
 # ---------------------------------------------------------------------------
@@ -128,8 +227,29 @@ def machine_from_toml(doc: tomlkit.TOMLDocument) -> MachineParameters:
     return _machine_from_dict(doc["machine"])
 
 
-def write_machine_toml(params: MachineParameters, path: Path) -> None:
-    Path(path).write_text(tomlkit.dumps(machine_to_toml(params)), encoding="utf-8")
+def write_machine_toml(params: MachineParameters, path: Path, parent_widget=None) -> bool:
+    """
+    Write machine parameters to TOML file with overwrite protection.
+    
+    Parameters
+    ----------
+    params : MachineParameters
+        Machine parameters to write
+    path : Path
+        Target file path
+    parent_widget : QWidget, optional
+        Parent widget for overwrite confirmation dialog
+    
+    Returns
+    -------
+    bool
+        True if file was written successfully, False if cancelled or failed
+    """
+    proceed, final_path = handle_file_overwrite(Path(path), parent_widget)
+    if proceed:
+        Path(final_path).write_text(tomlkit.dumps(machine_to_toml(params)), encoding="utf-8")
+        return True
+    return False
 
 
 def read_machine_toml(path: Path) -> MachineParameters:
@@ -179,8 +299,29 @@ def calibration_from_toml(doc: tomlkit.TOMLDocument) -> CalibrationParameters:
     )
 
 
-def write_calibration_toml(params: CalibrationParameters, path: Path) -> None:
-    Path(path).write_text(tomlkit.dumps(calibration_to_toml(params)), encoding="utf-8")
+def write_calibration_toml(params: CalibrationParameters, path: Path, parent_widget=None) -> bool:
+    """
+    Write calibration parameters to TOML file with overwrite protection.
+    
+    Parameters
+    ----------
+    params : CalibrationParameters
+        Calibration parameters to write
+    path : Path
+        Target file path
+    parent_widget : QWidget, optional
+        Parent widget for overwrite confirmation dialog
+    
+    Returns
+    -------
+    bool
+        True if file was written successfully, False if cancelled or failed
+    """
+    proceed, final_path = handle_file_overwrite(Path(path), parent_widget)
+    if proceed:
+        Path(final_path).write_text(tomlkit.dumps(calibration_to_toml(params)), encoding="utf-8")
+        return True
+    return False
 
 
 def read_calibration_toml(path: Path) -> CalibrationParameters:
@@ -412,11 +553,39 @@ def write_dac_toml(
     machine: Optional[list[MachineParameters]] = None,
     samples: Optional[list[SampleParameters]] = None,
     experiments: Optional[list[ExperimentParameters]] = None,
-) -> None:
-    Path(path).write_text(
-        tomlkit.dumps(dac_to_toml(dac, machine, samples, experiments)),
-        encoding="utf-8",
-    )
+    parent_widget=None,
+) -> bool:
+    """
+    Write DAC parameters to TOML file with overwrite protection.
+    
+    Parameters
+    ----------
+    dac : DACParameters
+        DAC parameters to write
+    path : Path
+        Target file path
+    machine : list[MachineParameters], optional
+        Machine parameters list
+    samples : list[SampleParameters], optional
+        Sample parameters list
+    experiments : list[ExperimentParameters], optional
+        Experiment parameters list
+    parent_widget : QWidget, optional
+        Parent widget for overwrite confirmation dialog
+    
+    Returns
+    -------
+    bool
+        True if file was written successfully, False if cancelled or failed
+    """
+    proceed, final_path = handle_file_overwrite(Path(path), parent_widget)
+    if proceed:
+        Path(final_path).write_text(
+            tomlkit.dumps(dac_to_toml(dac, machine, samples, experiments)),
+            encoding="utf-8",
+        )
+        return True
+    return False
 
 
 def read_dac_toml(

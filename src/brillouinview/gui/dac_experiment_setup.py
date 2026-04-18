@@ -203,13 +203,12 @@ class SetupExperimentWindow(QtWidgets.QDialog, Ui_SetupExperiment):
                     machine_filename = self._machine_parameters.machine_name.replace(" ", "_") + ".toml"
                     machine_file_path = machine_dir / machine_filename
                     
-                    write_machine_toml(self._machine_parameters, machine_file_path)
-                    
-                    QtWidgets.QMessageBox.information(
-                        self,
-                        "Machine File Saved",
-                        f"Machine parameters successfully saved to:\n{machine_file_path}"
-                    )
+                    if write_machine_toml(self._machine_parameters, machine_file_path, parent_widget=self):
+                        QtWidgets.QMessageBox.information(
+                            self,
+                            "Machine File Saved",
+                            f"Machine parameters successfully saved to:\n{machine_file_path}"
+                        )
                 except Exception as e:
                     QtWidgets.QMessageBox.warning(
                         self,
@@ -281,13 +280,12 @@ class SetupExperimentWindow(QtWidgets.QDialog, Ui_SetupExperiment):
                     machine_filename = self._machine_parameters.machine_name.replace(" ", "_") + ".toml"
                     machine_file_path = machine_dir / machine_filename
                     
-                    write_machine_toml(self._machine_parameters, machine_file_path)
-                    
-                    QtWidgets.QMessageBox.information(
-                        self,
-                        "Machine File Saved",
-                        f"Machine parameters successfully saved to:\n{machine_file_path}"
-                    )
+                    if write_machine_toml(self._machine_parameters, machine_file_path, parent_widget=self):
+                        QtWidgets.QMessageBox.information(
+                            self,
+                            "Machine File Saved",
+                            f"Machine parameters successfully saved to:\n{machine_file_path}"
+                        )
                 except Exception as e:
                     QtWidgets.QMessageBox.warning(
                         self,
@@ -417,11 +415,12 @@ class SetupExperimentWindow(QtWidgets.QDialog, Ui_SetupExperiment):
             
         self.create_experiment_directory()
         dac_toml_path = self.dac_parameters.dac_directory / f"{self.dac_parameters.dac_name.replace(' ', '_')}.toml"
-        write_dac_toml(dac=self.dac_parameters, 
-                       path=dac_toml_path, 
-                       samples=self.sample_parameters_list, 
-                       experiments=[self.experiment_parameters])
-        self.accept()
+        if write_dac_toml(dac=self.dac_parameters, 
+                          path=dac_toml_path, 
+                          samples=self.sample_parameters_list, 
+                          experiments=[self.experiment_parameters],
+                          parent_widget=self):
+            self.accept()
 
 
 
@@ -533,7 +532,7 @@ class SetupDACWindow(QtWidgets.QDialog, Ui_SetupDAC):
             
             # Write DAC TOML file
             dac_toml_path = dac_directory / f"{self.dac_parameters.dac_name.replace(' ', '_')}.toml"
-            write_dac_toml(dac=self.dac_parameters, path=dac_toml_path, samples=self.sample_parameters_list)
+            write_dac_toml(dac=self.dac_parameters, path=dac_toml_path, samples=self.sample_parameters_list, parent_widget=self)
         except Exception as e:
             QtWidgets.QMessageBox.critical(self, "Error", f"Failed to create DAC directory: {str(e)}")
             return
