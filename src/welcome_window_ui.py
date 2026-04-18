@@ -26,7 +26,7 @@ class Ui_Prequel_Dialog(object):
         self.button_new_dac.setObjectName("button_new_dac")
         self.verticalLayout.addWidget(self.button_new_dac)
         self.button_load_dac = QtWidgets.QPushButton(Prequel_Dialog)
-        self.button_load_dac.setEnabled(False)
+        self.button_load_dac.setEnabled(True)
         self.button_load_dac.setObjectName("button_load_dac")
         self.verticalLayout.addWidget(self.button_load_dac)
         self.button_load_experiment = QtWidgets.QPushButton(Prequel_Dialog)

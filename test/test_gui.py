@@ -48,7 +48,7 @@ class TestWelcomeWindow:
         qtbot.addWidget(window)
 
         assert window.button_new_dac.isEnabled()
-        assert not window.button_load_dac.isEnabled()
+        assert window.button_load_dac.isEnabled()
         assert window.button_load_experiment.isEnabled()
         assert not window.button_read_manual.isEnabled()
 
