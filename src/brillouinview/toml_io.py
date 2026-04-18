@@ -59,27 +59,21 @@ from brillouinview.setup_classes import (
 
 def handle_file_overwrite(file_path: Path, parent_widget=None) -> tuple[bool, Path]:
     """
-    Check if a file exists and prompt user for action via dialog.
+    Notify user that file will be updated/created and proceed.
     
-    If the file exists, shows a dialog with two options:
-        1. Overwrite - proceeding with writing to the existing path
-        2. Change Name - user selects a new file path via Save dialog
-    
-    If file doesn't exist, returns (True, file_path) to proceed immediately.
+    If file exists, shows a notification that it will be overwritten.
     
     Parameters
     ----------
     file_path : Path
-        The target file path to check
+        The target file path
     parent_widget : QWidget, optional
-        Parent widget for dialog (if using Qt)
+        Parent widget for notification dialog (if using Qt)
     
     Returns
     -------
     tuple[bool, Path]
-        (proceed, final_path) where:
-        - proceed: True if user chose to proceed, False if cancelled
-        - final_path: Path to write to (may differ if user chose "Change Name")
+        (True, file_path) - always proceeds with write
     
     Examples
     --------
@@ -89,61 +83,18 @@ def handle_file_overwrite(file_path: Path, parent_widget=None) -> tuple[bool, Pa
     """
     file_path = Path(file_path)
     
-    # If file doesn't exist, no need to check
-    if not file_path.exists():
-        return True, file_path
-    
-    # File exists - show dialog if Qt is available
-    if not HAS_QT or parent_widget is None:
-        # Fallback if Qt not available or no parent widget
-        print(f"Warning: File already exists at {file_path}")
-        return True, file_path
-    
-    # Create dialog with two buttons
-    dialog = QtWidgets.QMessageBox(parent_widget)
-    dialog.setWindowTitle("File Already Exists")
-    dialog.setText(f"The file already exists:\n\n{file_path}")
-    dialog.setInformativeText("What would you like to do?")
-    
-    # Add custom buttons
-    overwrite_btn = dialog.addButton("Overwrite", QtWidgets.QMessageBox.DestructiveRole)
-    change_name_btn = dialog.addButton("Change Name", QtWidgets.QMessageBox.ActionRole)
-    cancel_btn = dialog.addButton("Cancel", QtWidgets.QMessageBox.RejectRole)
-    
-    dialog.setDefaultButton(cancel_btn)
-    dialog.exec_()
-    
-    clicked_btn = dialog.clickedButton()
-    
-    if clicked_btn == overwrite_btn:
-        # User chose to overwrite
-        return True, file_path
-    
-    elif clicked_btn == change_name_btn:
-        # User chose to change name - show file save dialog
-        file_dialog = QtWidgets.QFileDialog(parent_widget)
-        file_dialog.setDefaultFileName(file_path.name)
-        file_dialog.setDirectory(str(file_path.parent))
-        file_dialog.setAcceptMode(QtWidgets.QFileDialog.AcceptSave)
-        
-        # Set file type filter based on file extension
-        if file_path.suffix.lower() == ".toml":
-            file_dialog.setNameFilters(["TOML Files (*.toml)", "All Files (*)"])
-        elif file_path.suffix.lower() == ".yaml" or file_path.suffix.lower() == ".yml":
-            file_dialog.setNameFilters(["YAML Files (*.yaml *.yml)", "All Files (*)"])
+    # If file exists, show notification
+    if file_path.exists():
+        if HAS_QT and parent_widget is not None:
+            dialog = QtWidgets.QMessageBox(parent_widget)
+            dialog.setWindowTitle("File Updated")
+            dialog.setText(f"File updated:\n\n{file_path}")
+            dialog.setIcon(QtWidgets.QMessageBox.Information)
+            dialog.exec_()
         else:
-            file_dialog.setNameFilters([f"Files (*{file_path.suffix})", "All Files (*)"])
-        
-        if file_dialog.exec_() == QtWidgets.QFileDialog.Accepted:
-            new_path = Path(file_dialog.selectedFiles()[0])
-            return True, new_path
-        else:
-            # User cancelled the save dialog
-            return False, file_path
+            print(f"File updated: {file_path}")
     
-    else:
-        # User clicked Cancel or closed dialog
-        return False, file_path
+    return True, file_path
 
 
 # ---------------------------------------------------------------------------
