@@ -9,14 +9,12 @@ import pyqtgraph as pg
 import numpy as np
 import sys
 from brillouinview_main_window_ui import Ui_MainWindow
-from brillouinview.calibration import ExperimentSetup
-from brillouinview.io_fileparsing import experiment_setup_calibration
 
-from brillouinview.gui.calibration_tab import ExperimentSetupWindow, CalibrationFitWindow
+from brillouinview.gui.calibration_tab import CalibrationFitWindow
 from brillouinview.io_fileparsing import read_ghost_file
 from brillouinview.fitting_algorithm import gaussian
 from PyQt5.QtCore import Qt
-from brillouinview.setup_classes import DACParameters, MachineParameters, ExperimentParameters
+from brillouinview.setup_classes import DACParameters, MachineParameters, ExperimentParameters, CalibrationParameters
 from brillouinview.gui.dac_experiment_setup import SetupExperimentWindow, SetupDACWindow, WelcomeWindow
 
 class BrillouinViewApp(QMainWindow):
@@ -32,13 +30,11 @@ class BrillouinViewApp(QMainWindow):
         
         self.ui.le_dac.setText(self.dac_parameters.dac_name)
         self.ui.le_experiment.setText(self.experiment_parameters.exp_name)
-        self.ui.le_machine.setText(self.experiment_parameters.exp_machine_parameters.machine_name)
+        self.ui.le_machine.setText(self.machine_parameters.machine_name)
 
         #calibration tab setup
-        # Todo: exchange ExperimentSetup with CalibrationParameters  
-        self.experiment_setup = ExperimentSetup()
-        self.ui.button_edit_settings.clicked.connect(self.open_subwindow_experiment_setup)
-        self.ui.button_calibration_load_settings.clicked.connect(self.load_experiment_setup)
+        # Todo:Check for existing calibration parameters in experiment
+        self.calibration_setup = CalibrationParameters()
         self.ui.button_load_calibration.clicked.connect(self.load_calibration_data)
         self.ui.button_start_fit.clicked.connect(self.start_calibration_fit)
         self.ui.button_run_calibration.clicked.connect(self.calculate_calibration)
@@ -50,6 +46,7 @@ class BrillouinViewApp(QMainWindow):
         if dialog.exec_() == QDialog.Accepted:
             self.dac_parameters = dialog.dac_parameters
             self.experiment_parameters = dialog.experiment_parameters
+            self.machine_parameters = dialog.machine_parameters
         else:
             # User closed the welcome window with X button
             sys.exit(0)
@@ -126,7 +123,7 @@ class BrillouinViewApp(QMainWindow):
          working_dir,"DAT files (*.DAT)")
 
         self.calibration_filepath = Path(file_name[0])
-        self.experiment_setup.calibration_file_path = self.calibration_filepath
+        self.calibration_setup.calibration_file_path = self.calibration_filepath
 
         if not self.calibration_filepath.exists():
             QMessageBox.critical(self, "Error", "The chosen file does not exist.")
@@ -161,17 +158,17 @@ class BrillouinViewApp(QMainWindow):
             QMessageBox.critical(self, "Error", "Select the number of peaks that are in the calibration data.")
             return
 
-        self.experiment_setup.calibration_peak_number = int(self.ui.sB_numpeaks.value())
-        self.experiment_setup.calibration_peak_function = self.ui.cBox_peakfunction.currentText()
+        self.calibration_setup.calibration_peak_number = int(self.ui.sB_numpeaks.value())
+        self.calibration_setup.calibration_peak_function = self.ui.cBox_peakfunction.currentText()
 
-        self.cal_fit_window = CalibrationFitWindow(self.experiment_setup)
+        self.cal_fit_window = CalibrationFitWindow(self.calibration_setup)
         self.cal_fit_window.start_fit_window()
         self.cal_fit_window.sig.connect(self.apply_new_setup_calfit)
         self.cal_fit_window.show()
 
     def apply_new_setup_calfit(self, new_setup):
-        self.experiment_setup = new_setup
-        centers = [param['center'] for param in self.experiment_setup.calibration_peak_parameters]
+        self.calibration_setup = new_setup
+        centers = [param['center'] for param in self.calibration_setup.calibration_peak_parameters]
 
         # List of line edits
         line_edits = [self.ui.le_pos_d1, self.ui.le_pos_d2, self.ui.le_pos_d3]
@@ -193,7 +190,7 @@ class BrillouinViewApp(QMainWindow):
         if not hasattr(self, 'calibration_data') or self.calibration_data is None:
             return
         
-        if not hasattr(self.experiment_setup, 'calibration_peak_parameters') or not self.experiment_setup.calibration_peak_parameters:
+        if not hasattr(self.calibration_setup, 'calibration_peak_parameters') or not self.calibration_setup.calibration_peak_parameters:
             return
         
         # Define specific colors for up to 3 peaks
@@ -203,13 +200,13 @@ class BrillouinViewApp(QMainWindow):
         x_values = self.calibration_data.index.values
         
         # Plot each individual peak
-        for i, peak in enumerate(self.experiment_setup.calibration_peak_parameters):
+        for i, peak in enumerate(self.calibration_setup.calibration_peak_parameters):
             amp = nominal(peak.get("amplitude", 0.0))
             cen = nominal(peak.get("center", 0.0))
             sig = nominal(peak.get("sigma", 1.0))
             
             # Calculate individual Gaussian (assuming baseline is 0 or extract from somewhere)
-            baseline = nominal(self.experiment_setup.calibration_background) if hasattr(self.experiment_setup, 'calibration_background') else 0.0
+            baseline = nominal(self.calibration_setup.calibration_background) if hasattr(self.calibration_setup, 'calibration_background') else 0.0
             individual = baseline + gaussian(x_values, amp, cen, sig)
             
             # Use predefined colors
@@ -224,7 +221,7 @@ class BrillouinViewApp(QMainWindow):
     def calculate_calibration(self):
        
         # Extract center values
-        centers = [param['center'] for param in self.experiment_setup.calibration_peak_parameters]
+        centers = [param['center'] for param in self.calibration_setup.calibration_peak_parameters]
         # Calculate delta_channel based on number of peaks
         if len(centers) == 2:
             delta_channel = np.abs(centers[1] - centers[0])
@@ -238,10 +235,25 @@ class BrillouinViewApp(QMainWindow):
             return
 
         # Update experiment setup and UI
-        self.experiment_setup.calibration_value = nominal(delta_channel)
-        self.experiment_setup.calibration_value_unc = delta_channel.std_dev
-        self.ui.le_calibration.setText(f"{self.experiment_setup.calibration_value:.6f}")
-        self.ui.le_calibration_unc.setText(f"{self.experiment_setup.calibration_value_unc:.6f}")
+        self.calibration_setup.calibration_value = nominal(delta_channel)
+        self.calibration_setup.calibration_value_unc = delta_channel.std_dev
+        self.ui.le_calibration.setText(f"{self.calibration_setup.calibration_value:.6f}")
+        self.ui.le_calibration_unc.setText(f"{self.calibration_setup.calibration_value_unc:.6f}")
+
+    def calculate_channel_bshift_factor(exp_setup: CalibrationParameters, OD: int = 1) -> ufloat:
+        # Calculate the Factor to be multiplied with the Brillouin Shift in Channels to get the Shift as a Frequency
+        # OD: Order of Diffraction
+        # calibration_value: Calibration Value in Channels
+        # spacing: Mirror Spacing in meters
+        # Returns: calibration_factor in Hz/Channel
+        
+        calibration_value = ufloat(exp_setup.calibration_value, exp_setup.calibration_value_unc)
+        spacing = ufloat(exp_setup.spacing, exp_setup.spacing_unc)
+        
+        speed_of_light = 299792458 # Speed of light in m/s
+        calibration_factor = speed_of_light * OD / (2 * spacing * calibration_value)
+        
+        return calibration_factor
 
     def reset_entires(self):
         """Reset all entries, plots, and experiment setup to initial state"""
@@ -250,7 +262,7 @@ class BrillouinViewApp(QMainWindow):
         self.ui.graph.clear()
         
         # Reset experiment setup to a fresh instance
-        self.experiment_setup = ExperimentSetup()
+        self.calibration_setup = CalibrationParameters()
         
         # Clear all line edits in ui_fields_dict
         ui_fields = [

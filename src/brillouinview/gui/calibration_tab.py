@@ -2,130 +2,13 @@ from PyQt5.QtGui import QDoubleValidator
 from PyQt5.QtCore import pyqtSignal
 from PyQt5.QtWidgets import  QDialog, QLineEdit, QMessageBox, QTableWidget, QTableWidgetItem
 from pathlib import Path
-from edit_calibration_settings_ui import Ui_EditCalibrationSettings
 from calibration_fit_window_ui import Ui_CalibrationFitWindow
-from brillouinview.calibration import ExperimentSetup
 from brillouinview.io_fileparsing import read_ghost_file
 from brillouinview.fitting_algorithm import fit_peaks    
 import pyqtgraph as pg
 from PyQt5.QtCore import Qt
 from brillouinview.fitting_algorithm import gaussian
 from brillouinview.helping_functions import nominal
-
-class ExperimentSetupWindow(QDialog):
-    sig = pyqtSignal(object)
-    def __init__(self, experiment_setup: ExperimentSetup):
-        super().__init__()
-        self.current_experiment_setup = experiment_setup
-        self.prev_laser = experiment_setup.laser_wavelength
-        self.ui = Ui_EditCalibrationSettings()
-        self.ui.setupUi(self)
-        self.ui_fields_dict = {
-            "scattering_angle": {"widget": self.ui.le_angle, "type": float},
-            "scattering_angle_unc": {"widget": self.ui.le_angle_unc, "type": float},
-            "laser_wavelength": {"widget": self.ui.le_wavelength, "type": float},
-            "laser_wavelength_unc": {"widget": self.ui.le_wavelength_unc, "type": float},
-            "spacing": {"widget": self.ui.le_spacing, "type": float},
-            "spacing_unc": {"widget": self.ui.le_spacing_unc, "type": float},
-            "calibration_value": {"widget": self.ui.le_calibration, "type": float},
-            "calibration_value_unc": {"widget": self.ui.le_calibration_unc, "type": float},
-        }
-        self.populate_fields()
-        self.set_double_validator()
-        self.ui.button_calibration_save_settings.clicked.connect(self.update_experiment_setup)
-
-    def populate_fields(self):
-        for key, meta in self.ui_fields_dict.items():
-            value = getattr(self.current_experiment_setup, key)
-            line_edit: QLineEdit = meta["widget"]
-            line_edit.setText(str(value))
-
-    def set_double_validator(self):
-        validator = QDoubleValidator()
-        validator.setNotation(QDoubleValidator.StandardNotation)
-        for field in self.ui_fields_dict.values():
-            line_edit: QLineEdit = field["widget"]
-            line_edit.setValidator(validator)
-
-    def update_experiment_setup(self):
-        self.new_experiment_setup_data = self.read_all_fields()
-        if self.sanitiy_check():
-            # Update only provided fields on the existing ExperimentSetup instance
-            for key, value in self.new_experiment_setup_data.items():
-                if value is not None and hasattr(self.current_experiment_setup, key):
-                    setattr(self.current_experiment_setup, key, value)
-            
-            self.sig.emit(self.current_experiment_setup)
-            self.close()
-        else:
-            QMessageBox.critical(self, "Error", "Invalid input values. All entries have to bee positiv and within the given ranges (see tool tips). " \
-            "Also, uncertainties must be provided together with their corresponding values.")
-
-    def sanitiy_check(self):
-        """
-        Validate dictionary values against key-specific ranges.
-        
-        Args:
-            data: Dictionary to validate
-            ranges: Dictionary mapping keys to (min, max) tuples
-        
-        Returns:
-            bool: True if all values are valid
-        """
-        ranges = {
-            "scattering_angle": (0.0, 180.0),
-            "scattering_angle_unc": (0.0, 10.0),
-            "laser_wavelength": (100.0, 2000.0),
-            "laser_wavelength_unc": (0.0, 10.0),
-            "spacing": (0.1, 1000.0),
-            "spacing_unc": (0.0, 100.0),
-            "calibration_value": (100, 1000.0),
-            "calibration_value_unc": (0.0, 100.0),
-        }
-
-        paired_keys = [
-            ('scattering_angle', 'scattering_angle_unc'),
-            ('laser_wavelength', 'laser_wavelength_unc'),
-            ('spacing', 'spacing_unc'),
-            ('calibration_value', 'calibration_value_unc'),
-            # Add more pairs as needed
-        ]
-        
-        # Check type consistency for paired keys
-        for key1, key2 in paired_keys:
-            if key1 in self.new_experiment_setup_data and key2 in self.new_experiment_setup_data:
-                val1, val2 = self.new_experiment_setup_data[key1], self.new_experiment_setup_data[key2]
-                # Both must be None or both must be not-None
-                if (val1 is None) != (val2 is None):
-                    return False
-
-        for key, value in self.new_experiment_setup_data.items():
-            if value is None:
-                continue  # None is always valid
-
-            if key not in ranges:
-                return False  # Unknown key
-            
-            min_val, max_val = ranges[key]
-            if not (min_val <= value <= max_val):
-                return False
-
-        return True
-
-    def read_all_fields(self):
-        data = {}
-        for key, meta in self.ui_fields_dict.items():
-            text = meta["widget"].text()
-            try:
-                data[key] = meta["type"](text)
-            except ValueError:
-                data[key] = None
-
-        return data
-    
-    def closeEvent(self, event):
-        super().closeEvent(event) 
-
 
 class CalibrationFitWindow(QDialog):
     sig = pyqtSignal(object)

@@ -26,8 +26,25 @@ class DACParameters:
     dac_directory: Path = None
 
 @dataclass
+class CalibrationParameters:
+    exp_machine_parameters: MachineParameters = None
+    calibration_file_path: Path = Path()
+    calibration_OD: int = None
+    calibration_value: float = None
+    calibration_value_unc: float = None
+    calibration_factor: float = None
+    calibration_factor_unc: float = None
+    calibration_file_path: Path = Path()
+    calibration_peak_number: int = None
+    calibration_peak_function: str = "" # e.g., "Gaussian", "Lorentzian"
+    calibration_peak_parameters: list = None  # e.g., [amplitude, center, width]
+    machine_spacing: float = None
+    machine_spacing_unc: float = None
+
+@dataclass
 class ExperimentParameters:
     exp_machine_parameters: MachineParameters = None
+    exp_calibration_parameters: CalibrationParameters = None
     exp_name: str = None
     exp_temperature: float = None
     exp_temperature_unc: float = None
@@ -48,16 +65,6 @@ class SampleParameters:
     sample_notes: str = None
     sample_experiments: list = None
 
-@dataclass
-class CalibrationParameters:
-    calibration_value: float = None
-    calibration_value_unc: float = None
-    calibration_factor: float = None
-    calibration_factor_unc: float = None
-    calibration_file_path: Path = Path()
-    calibration_peak_number: int = None
-    calibration_peak_function: str = "" # e.g., "Gaussian", "Lorentzian"
-    calibration_peak_parameters: list = None  # e.g., [amplitude, center, width]
 
 @dataclass
 class SpectrumParameters:
