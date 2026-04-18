@@ -336,7 +336,7 @@ class TestDACParameters:
         names = {e.exp_name for e in exps_back}
         assert names == {e1.exp_name, e2.exp_name}
         # exp_machine_parameters stored as machine name reference
-        assert exps_back[0].exp_machine_parameters in {m1.machine_name, m2.machine_name}
+        assert {e.exp_machine_parameters.machine_name for e in exps_back} == {m1.machine_name, m2.machine_name}
 
         # Samples preserved and back-linked to DAC, and each sample references both experiments
         assert len(samples_back) == 3
