@@ -648,19 +648,86 @@ def _handle_sample_changes(
     return True  # All checks passed
 
 
+def _get_machine_name(machine_params: Optional[MachineParameters]) -> Optional[str]:
+    """Safely extract machine_name from MachineParameters without triggering circular reference."""
+    return machine_params.machine_name if machine_params else None
+
+
 def _handle_experiment_changes(
     existing_experiments: list[ExperimentParameters],
     new_experiments: list[ExperimentParameters],
-) -> None:
+    edit_experiment: bool = False,
+) -> bool:
     """
     Handle changes to existing experiments.
     
-    Placeholder for future implementation to detect and process
-    modifications to existing experiment parameters.
+    For each new experiment matching an existing experiment by exp_name:
+    - If other fields differ and edit_experiment is False, abort entire update
+    - If other fields differ and edit_experiment is True, update the existing experiment
+    - If identical, pass silently
     
-    TODO: Implement in next task
+    Parameters
+    ----------
+    existing_experiments : list[ExperimentParameters]
+        List of existing experiments in the file
+    new_experiments : list[ExperimentParameters]
+        List of new/updated experiments to add
+    edit_experiment : bool, default False
+        If True, allow modifications to existing experiments. If False, abort on any changes.
+    
+    Returns
+    -------
+    bool
+        True if all checks passed, False if inconsistencies detected (abort procedure)
     """
-    pass
+    # Build lookup for existing experiments by name
+    existing_by_name: dict[str, ExperimentParameters] = {
+        e.exp_name: e for e in existing_experiments if e.exp_name
+    }
+    
+    # Check each new experiment against existing ones
+    for new_exp in new_experiments:
+        if not new_exp.exp_name:
+            continue
+        
+        existing_exp = existing_by_name.get(new_exp.exp_name)
+        if not existing_exp:
+            continue  # No existing experiment with this name, already handled as new
+        
+        # Check if any fields differ (compare all fields except the name which must stay the same)
+        if (new_exp.exp_temperature != existing_exp.exp_temperature or
+            new_exp.exp_temperature_unc != existing_exp.exp_temperature_unc or
+            new_exp.exp_pressure != existing_exp.exp_pressure or
+            new_exp.exp_pressure_unc != existing_exp.exp_pressure_unc or
+            new_exp.exp_date_start != existing_exp.exp_date_start or
+            new_exp.exp_date_end != existing_exp.exp_date_end or
+            new_exp.exp_operator != existing_exp.exp_operator or
+            new_exp.exp_notes != existing_exp.exp_notes or
+            new_exp.calibration_factor != existing_exp.calibration_factor or
+            new_exp.calibration_factor_unc != existing_exp.calibration_factor_unc or
+            _get_machine_name(new_exp.exp_machine_parameters) != _get_machine_name(existing_exp.exp_machine_parameters)):
+            
+            if not edit_experiment:
+                print(f"✗ Experiment '{new_exp.exp_name}': changes detected, aborting update:")
+                print(f"  Set edit_experiment=True to allow modifications to existing experiments")
+                return False
+            
+            # Allow the update - update the existing experiment with new values
+            existing_exp.exp_temperature = new_exp.exp_temperature
+            existing_exp.exp_temperature_unc = new_exp.exp_temperature_unc
+            existing_exp.exp_pressure = new_exp.exp_pressure
+            existing_exp.exp_pressure_unc = new_exp.exp_pressure_unc
+            existing_exp.exp_date_start = new_exp.exp_date_start
+            existing_exp.exp_date_end = new_exp.exp_date_end
+            existing_exp.exp_operator = new_exp.exp_operator
+            existing_exp.exp_notes = new_exp.exp_notes
+            existing_exp.calibration_factor = new_exp.calibration_factor
+            existing_exp.calibration_factor_unc = new_exp.calibration_factor_unc
+            existing_exp.exp_machine_parameters = new_exp.exp_machine_parameters
+            existing_exp.exp_calibration_parameters = new_exp.exp_calibration_parameters
+            print(f"✓ Experiment '{new_exp.exp_name}': updated")
+    
+    return True  # All checks passed
 
 
 def update_dac_toml(
@@ -668,6 +735,7 @@ def update_dac_toml(
     machine: Optional[list[MachineParameters]] = None,
     samples: Optional[list[SampleParameters]] = None,
     experiments: Optional[list[ExperimentParameters]] = None,
+    edit_experiment: bool = False,
     parent_widget=None,
 ) -> bool:
     """
@@ -689,6 +757,8 @@ def update_dac_toml(
         New/updated sample parameters
     experiments : list[ExperimentParameters], optional
         New/updated experiment parameters
+    edit_experiment : bool, default False
+        If True, allow modifications to existing experiments
     parent_widget : QWidget, optional
         Parent widget for notification dialogs (if using Qt)
     
@@ -767,7 +837,9 @@ def update_dac_toml(
             print(f"✓ Added {len(new_experiments_list)} new experiment(s): {', '.join(e.exp_name for e in new_experiments_list)}")
         
         # Check for changed experiments
-        _handle_experiment_changes(existing_experiments, experiments)
+        if not _handle_experiment_changes(existing_experiments, experiments, edit_experiment):
+            print("✗ Experiment update aborted due to inconsistencies")
+            return False
     
     # Write back if changes were made
     if changes_made:
