@@ -156,7 +156,7 @@ class SetupMachineWindow(QtWidgets.QDialog, Ui_SetupMachine):
 class SetupExperimentWindow(QtWidgets.QDialog, Ui_SetupExperiment):
     """Modal dialog for experiment setup. Returns ExperimentParameters."""
 
-    def __init__(self, parent=None, sample_parameters_list=None, dac_parameters=None):
+    def __init__(self, parent=None, sample_parameters_list=None, dac_parameters=None, experiments=None, append=False):
         super().__init__(parent)
         self.setupUi(self)
         self.setWindowModality(QtCore.Qt.ApplicationModal)
@@ -168,6 +168,8 @@ class SetupExperimentWindow(QtWidgets.QDialog, Ui_SetupExperiment):
 
         self.experiment_parameters: ExperimentParameters = None
         self.sample_parameters_list = sample_parameters_list if sample_parameters_list is not None else []
+        self.experiments = experiments if experiments is not None else []
+        self.append = append
         self.dac_parameters = dac_parameters
 
         # Bottom bar buttons
@@ -410,6 +412,8 @@ class SetupExperimentWindow(QtWidgets.QDialog, Ui_SetupExperiment):
             return
 
         self.experiment_parameters = self.get_experiment_data()
+        self.experiments.append(self.experiment_parameters)
+
         for sample_params in self.sample_parameters_list:
             sample_params.sample_experiments.append(self.experiment_parameters.exp_name)
             
@@ -418,7 +422,7 @@ class SetupExperimentWindow(QtWidgets.QDialog, Ui_SetupExperiment):
         if write_dac_toml(dac=self.dac_parameters, 
                           path=dac_toml_path, 
                           samples=self.sample_parameters_list, 
-                          experiments=[self.experiment_parameters],
+                          experiments=self.experiments,
                           machine=[self._machine_parameters],
                           parent_widget=self):
             self.accept()
@@ -871,8 +875,37 @@ class WelcomeWindow(QtWidgets.QDialog, Ui_Prequel_Dialog):
             self.accept()   # propagate up to BrillouinViewApp
 
     def on_load_dac(self):
-        # TODO: load existing DACParameters from file
-        pass
+        """Load DAC from an existing DAC TOML file."""
+        # Step 1: Open file browser to choose TOML file
+        working_dir = str(Path.cwd().absolute())
+        file_name = QtWidgets.QFileDialog.getOpenFileName(
+            self, 
+            'Choose DAC toml file', 
+            working_dir,
+            "TOML files (*.toml);;All Files (*)"
+        )
+        
+        file_path = Path(file_name[0])
+        
+        if not file_path.exists():
+            QtWidgets.QMessageBox.critical(self, "Error", "The chosen file does not exist.")
+            return
+        
+        # Step 2: Read the file and create DACParameters
+        try:
+            dac, machines, samples, experiments = read_dac_toml(file_path)
+        except Exception as e:
+            QtWidgets.QMessageBox.critical(self, "Error", f"Failed to load DAC file: {e}")
+            return
+        
+        # Step 3: Open SetupExperimentWindow with loaded DAC and samples
+        dac.dac_directory = file_path.parent  # Set the DAC directory to the location of the loaded file
+        exp_dialog = SetupExperimentWindow(parent=self, sample_parameters_list=samples, dac_parameters=dac, experiments=experiments, append=True)
+        if exp_dialog.exec_() == QtWidgets.QDialog.Accepted:
+            self.dac_parameters = dac
+            self.experiment_parameters = exp_dialog.experiment_parameters
+            self.machine_parameters = exp_dialog.experiment_parameters.exp_machine_parameters
+            self.accept()
 
     def on_load_experiment(self):
         """Load experiment from an existing DAC TOML file."""
