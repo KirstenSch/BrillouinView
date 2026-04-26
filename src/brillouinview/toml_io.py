@@ -559,6 +559,7 @@ def read_dac_toml(
 def _handle_machine_changes(
     existing_machines: list[MachineParameters],
     new_machines: list[MachineParameters],
+    edit_machine: bool=False,
 ) -> None:
     """
     Handle changes to existing machines.
@@ -568,7 +569,47 @@ def _handle_machine_changes(
     
     TODO: Implement in next task
     """
-    pass
+    # Build lookup for existing machines by name
+    existing_by_name: dict[str, MachineParameters] = {
+        m.machine_name: m for m in existing_machines if m.machine_name
+    }
+    
+    # Check each new machine against existing ones
+    for new_mach in new_machines:
+        if not new_mach.machine_name:
+            continue
+        
+        existing_mach = existing_by_name.get(new_mach.machine_name)
+        if not existing_mach:
+            continue  # No existing machine with this name, already handled as new
+
+        # Check if any fields differ (compare all fields except the name which must stay the same)
+        if (new_mach.scattering_angle != existing_mach.scattering_angle or
+            new_mach.scattering_angle_unc != existing_mach.scattering_angle_unc or
+            new_mach.laser_wavelength != existing_mach.laser_wavelength or
+            new_mach.laser_wavelength_unc != existing_mach.laser_wavelength_unc or
+            new_mach.spacing != existing_mach.spacing or
+            new_mach.spacing_unc != existing_mach.spacing_unc or
+            new_mach.machine_location != existing_mach.machine_location or
+            new_mach.machine_notes != existing_mach.machine_notes):
+            
+            if not edit_machine:
+                print(f"✗ Machine '{new_mach.machine_name}': changes detected, aborting update:")
+                print(f"  Set edit_machine=True to allow modifications to existing machines")
+                return False
+            
+            # Allow the update - update the existing machine with new values
+            existing_mach.scattering_angle = new_mach.scattering_angle
+            existing_mach.scattering_angle_unc = new_mach.scattering_angle_unc
+            existing_mach.laser_wavelength = new_mach.laser_wavelength
+            existing_mach.laser_wavelength_unc = new_mach.laser_wavelength_unc
+            existing_mach.spacing = new_mach.spacing
+            existing_mach.spacing_unc = new_mach.spacing_unc
+            existing_mach.machine_location = new_mach.machine_location
+            existing_mach.machine_notes = new_mach.machine_notes
+            print(f"✓ Machine '{new_mach.machine_name}': updated")
+    
+    return True  # All checks passed
 
 
 def _get_dac_name(dac_params: Optional[DACParameters]) -> Optional[str]:
@@ -736,6 +777,7 @@ def update_dac_toml(
     samples: Optional[list[SampleParameters]] = None,
     experiments: Optional[list[ExperimentParameters]] = None,
     edit_experiment: bool = False,
+    edit_machine: bool = False,
     parent_widget=None,
 ) -> bool:
     """
@@ -805,7 +847,10 @@ def update_dac_toml(
             print(f"✓ Added {len(new_machines_list)} new machine(s): {', '.join(m.machine_name for m in new_machines_list)}")
         
         # Check for changed machines
-        _handle_machine_changes(existing_machines, machine)
+        if not _handle_machine_changes(existing_machines, machine):
+            print("✗ Machine update aborted due to inconsistencies")
+            return False
+
     
     # Update samples
     if samples:
