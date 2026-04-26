@@ -610,12 +610,6 @@ def _handle_machine_changes(
     
     return True  # All checks passed
 
-
-def _get_dac_name(dac_params: Optional[DACParameters]) -> Optional[str]:
-    """Safely extract dac_name from DACParameters without triggering circular reference."""
-    return dac_params.dac_name if dac_params else None
-
-
 def _handle_sample_changes(
     existing_samples: list[SampleParameters],
     new_samples: list[SampleParameters],
@@ -648,21 +642,19 @@ def _handle_sample_changes(
         if not existing_sample:
             continue  # No existing sample with this name, already handled as new
         
-        # Check if any non-experiment fields differ
+        # Check if any fields differ (compare all fields except the name which must stay the same)
         if (new_sample.sample_structure != existing_sample.sample_structure or
-            new_sample.sample_notes != existing_sample.sample_notes or
-            _get_dac_name(new_sample.sample_dac_parameters) != _get_dac_name(existing_sample.sample_dac_parameters)):
+            new_sample.sample_notes != existing_sample.sample_notes):
             
-            print(f"✗ Sample '{new_sample.sample_name}': inconsistencies detected, aborting update:")
-            if new_sample.sample_structure != existing_sample.sample_structure:
-                print(f"  sample_structure: '{existing_sample.sample_structure}' → '{new_sample.sample_structure}'")
-            if new_sample.sample_notes != existing_sample.sample_notes:
-                print(f"  sample_notes: '{existing_sample.sample_notes}' → '{new_sample.sample_notes}'")
-            if _get_dac_name(new_sample.sample_dac_parameters) != _get_dac_name(existing_sample.sample_dac_parameters):
-                new_dac_name = _get_dac_name(new_sample.sample_dac_parameters)
-                existing_dac_name = _get_dac_name(existing_sample.sample_dac_parameters)
-                print(f"  sample_dac_parameters: '{existing_dac_name}' → '{new_dac_name}'")
-            return False  # Abort entire sample update procedure
+            if not edit_sample:
+                print(f"✗ Sample '{new_sample.sample_name}': changes detected, aborting update:")
+                print(f"  Set edit_sample=True to allow modifications to existing samples")
+                return False
+            
+            # Allow the update - update the existing sample with new values
+            existing_sample.sample_structure = new_sample.sample_structure
+            existing_sample.sample_notes = new_sample.sample_notes
+            print(f"✓ Sample '{new_sample.sample_name}': updated")
         
         # Handle sample_experiments - combine only if no inconsistencies found
         if new_sample.sample_experiments or existing_sample.sample_experiments:
@@ -778,6 +770,7 @@ def update_dac_toml(
     experiments: Optional[list[ExperimentParameters]] = None,
     edit_experiment: bool = False,
     edit_machine: bool = False,
+    edit_sample: bool = False,
     parent_widget=None,
 ) -> bool:
     """
