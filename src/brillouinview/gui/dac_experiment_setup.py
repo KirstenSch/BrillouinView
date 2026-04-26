@@ -539,14 +539,13 @@ class SetupDACWindow(QtWidgets.QDialog, Ui_SetupDAC):
             return
         
         self.sample_parameters_list = self.get_sample_data()
-        
+
         if not self.sample_parameters_list:
             QtWidgets.QMessageBox.warning(self, "No Samples", "Please add at least one sample with a name.")
             return
 
         self.dac_parameters = self.get_dac_data()
-
-
+        
         # Ask user to select a directory for the DAC folder
         parent_directory = QtWidgets.QFileDialog.getExistingDirectory(
             self,
@@ -626,7 +625,6 @@ class SetupDACWindow(QtWidgets.QDialog, Ui_SetupDAC):
                 continue  # Skip rows without a sample name
 
             sample_params = SampleParameters(
-                sample_dac_parameters=self.dac_parameters,
                 sample_name=sample_name,
                 sample_structure=sample_structure,
                 sample_notes=sample_notes,

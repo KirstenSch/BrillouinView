@@ -420,7 +420,6 @@ class TestEndToEndWorkflow:
 
         # Create sample parameters
         sample_params = SampleParameters(
-            sample_dac_parameters=dac_params,
             sample_name="Sample 1",
             sample_structure="cubic",
             sample_notes="Test sample",

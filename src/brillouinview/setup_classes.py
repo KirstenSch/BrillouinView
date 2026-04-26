@@ -58,7 +58,6 @@ class ExperimentParameters:
 
 @dataclass
 class SampleParameters:
-    sample_dac_parameters: DACParameters = None
     sample_name: str = None
     sample_structure: str = None
     sample_notes: str = None

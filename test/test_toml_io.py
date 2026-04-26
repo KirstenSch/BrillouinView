@@ -108,7 +108,6 @@ def experiment(machine) -> ExperimentParameters:
 @pytest.fixture
 def sample(dac, experiment) -> SampleParameters:
     return SampleParameters(
-        sample_dac_parameters = dac,
         sample_name           = "Fe2O3-001",
         sample_structure      = "hematite",
         sample_notes          = "5 µm flake, annealed",
@@ -231,12 +230,6 @@ class TestDACParameters:
         assert s.sample_structure == sample.sample_structure
         assert s.sample_notes     == sample.sample_notes
 
-    def test_sample_backlink_to_dac(self, tmp_path, dac, sample, experiment):
-        p = tmp_path / "dac.toml"
-        write_dac_toml(dac, p, samples=[sample], experiments=[experiment])
-        dac_back, _, samples_back, _ = read_dac_toml(p)
-        assert samples_back[0].sample_dac_parameters is dac_back
-
     def test_experiment_fields_survive(self, tmp_path, dac, sample, experiment):
         p = tmp_path / "dac.toml"
         write_dac_toml(dac, p, samples=[sample], experiments=[experiment])
@@ -341,7 +334,6 @@ class TestDACParameters:
         # Samples preserved and back-linked to DAC, and each sample references both experiments
         assert len(samples_back) == 3
         for s in samples_back:
-            assert s.sample_dac_parameters is dac_back
             assert s.sample_experiments is not None
             assert len(s.sample_experiments) == 2
             assert {e.exp_name for e in s.sample_experiments} == {e1.exp_name, e2.exp_name}

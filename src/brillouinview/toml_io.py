@@ -483,7 +483,6 @@ def dac_from_toml(
         exp_names = list(s.get("sample_experiments") or [])
         resolved_exps = [exp_by_name[n] for n in exp_names if n in exp_by_name]
         sample = SampleParameters(
-            sample_dac_parameters = dac,        # back-linked to parent DAC
             sample_name           = _get(s, "sample_name"),
             sample_structure      = _get(s, "sample_structure"),
             sample_notes          = _get(s, "sample_notes"),
@@ -620,6 +619,7 @@ def _get_dac_name(dac_params: Optional[DACParameters]) -> Optional[str]:
 def _handle_sample_changes(
     existing_samples: list[SampleParameters],
     new_samples: list[SampleParameters],
+    edit_sample: bool=False,
 ) -> bool:
     """
     Handle changes to existing samples.
