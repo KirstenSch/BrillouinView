@@ -22,7 +22,6 @@ class DACParameters:
     dac_owner: str = None
     dac_notes: str = None
     dac_samples: list = None
-    dac_experiments: list = None
     dac_directory: Path = None
 
 @dataclass
