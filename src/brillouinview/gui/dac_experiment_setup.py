@@ -165,6 +165,8 @@ class SetupExperimentWindow(QtWidgets.QDialog, Ui_SetupExperiment):
         self.le_exp_temp_unc.setValidator(validator)
         self.le_exp_pressure.setValidator(validator)
         self.le_exp_pressure_unc.setValidator(validator)
+        self.de_exp_end.setDate(QtCore.QDate.currentDate())
+        self.de_exp_start.setDate(QtCore.QDate.currentDate())
 
         self.experiment_parameters: ExperimentParameters = None
         self.sample_parameters_list = sample_parameters_list if sample_parameters_list is not None else []
@@ -524,6 +526,7 @@ class SetupDACWindow(QtWidgets.QDialog, Ui_SetupDAC):
         self.bt_dac_create_exp.clicked.connect(self.on_create_experiment)
         self.bt_dac_clear_exp.clicked.connect(self.on_clear_all)
         self.bt_add_sample.clicked.connect(self._add_sample_row)
+        self.date_dac_prep.setDate(QtCore.QDate.currentDate())
 
         # Initialize the samples table inside the scroll area (header + first row)
         self._init_samples_table()
