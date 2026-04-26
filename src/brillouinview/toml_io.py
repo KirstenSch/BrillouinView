@@ -550,3 +550,240 @@ def read_dac_toml(
     path: Path,
 ) -> tuple[DACParameters, list[MachineParameters], list[SampleParameters], list[ExperimentParameters]]:
     return dac_from_toml(tomlkit.loads(Path(path).read_text(encoding="utf-8")))
+
+
+# ---------------------------------------------------------------------------
+# DAC run file — update with new parameters
+# ---------------------------------------------------------------------------
+
+def _handle_machine_changes(
+    existing_machines: list[MachineParameters],
+    new_machines: list[MachineParameters],
+) -> None:
+    """
+    Handle changes to existing machines.
+    
+    Placeholder for future implementation to detect and process
+    modifications to existing machine parameters.
+    
+    TODO: Implement in next task
+    """
+    pass
+
+
+def _get_dac_name(dac_params: Optional[DACParameters]) -> Optional[str]:
+    """Safely extract dac_name from DACParameters without triggering circular reference."""
+    return dac_params.dac_name if dac_params else None
+
+
+def _handle_sample_changes(
+    existing_samples: list[SampleParameters],
+    new_samples: list[SampleParameters],
+) -> bool:
+    """
+    Handle changes to existing samples.
+    
+    For each new sample matching an existing sample by name:
+    - If sample_experiments differ, combine the lists (avoiding duplicates by exp_name)
+    - If other fields differ, abort the entire sample update procedure
+    - If identical, pass silently
+    
+    Returns
+    -------
+    bool
+        True if all checks passed, False if inconsistencies detected (abort procedure)
+    """
+    # Build lookup for existing samples by name
+    existing_by_name: dict[str, SampleParameters] = {
+        s.sample_name: s for s in existing_samples if s.sample_name
+    }
+    
+    # Check each new sample against existing ones
+    for new_sample in new_samples:
+        if not new_sample.sample_name:
+            continue
+        
+        existing_sample = existing_by_name.get(new_sample.sample_name)
+        if not existing_sample:
+            continue  # No existing sample with this name, already handled as new
+        
+        # Check if any non-experiment fields differ
+        if (new_sample.sample_structure != existing_sample.sample_structure or
+            new_sample.sample_notes != existing_sample.sample_notes or
+            _get_dac_name(new_sample.sample_dac_parameters) != _get_dac_name(existing_sample.sample_dac_parameters)):
+            
+            print(f"✗ Sample '{new_sample.sample_name}': inconsistencies detected, aborting update:")
+            if new_sample.sample_structure != existing_sample.sample_structure:
+                print(f"  sample_structure: '{existing_sample.sample_structure}' → '{new_sample.sample_structure}'")
+            if new_sample.sample_notes != existing_sample.sample_notes:
+                print(f"  sample_notes: '{existing_sample.sample_notes}' → '{new_sample.sample_notes}'")
+            if _get_dac_name(new_sample.sample_dac_parameters) != _get_dac_name(existing_sample.sample_dac_parameters):
+                new_dac_name = _get_dac_name(new_sample.sample_dac_parameters)
+                existing_dac_name = _get_dac_name(existing_sample.sample_dac_parameters)
+                print(f"  sample_dac_parameters: '{existing_dac_name}' → '{new_dac_name}'")
+            return False  # Abort entire sample update procedure
+        
+        # Handle sample_experiments - combine only if no inconsistencies found
+        if new_sample.sample_experiments or existing_sample.sample_experiments:
+            existing_exps = existing_sample.sample_experiments or []
+            new_exps = new_sample.sample_experiments or []
+            
+            # Combine lists, avoiding duplicates by experiment name
+            existing_exp_names = {
+                e.exp_name for e in existing_exps 
+                if hasattr(e, 'exp_name') and e.exp_name
+            }
+            combined = list(existing_exps)
+            for exp in new_exps:
+                exp_name = exp.exp_name if hasattr(exp, 'exp_name') else None
+                if exp_name and exp_name not in existing_exp_names:
+                    combined.append(exp)
+                elif not exp_name:
+                    combined.append(exp)
+            
+            existing_sample.sample_experiments = combined if combined else None
+            if new_exps:
+                print(f"✓ Sample '{new_sample.sample_name}': merged experiments (now {len(combined)} total)")
+    
+    return True  # All checks passed
+
+
+def _handle_experiment_changes(
+    existing_experiments: list[ExperimentParameters],
+    new_experiments: list[ExperimentParameters],
+) -> None:
+    """
+    Handle changes to existing experiments.
+    
+    Placeholder for future implementation to detect and process
+    modifications to existing experiment parameters.
+    
+    TODO: Implement in next task
+    """
+    pass
+
+
+def update_dac_toml(
+    path: Path,
+    machine: Optional[list[MachineParameters]] = None,
+    samples: Optional[list[SampleParameters]] = None,
+    experiments: Optional[list[ExperimentParameters]] = None,
+    parent_widget=None,
+) -> bool:
+    """
+    Update a DAC TOML file by comparing input parameters with existing file.
+    
+    Behavior:
+        - Appends new machines, samples, experiments (matched by name)
+        - Detects changes to existing items for future handling
+        - Overwrites file if changes were made
+        - Informs user of updates via print statements (or Qt dialog if parent_widget provided)
+    
+    Parameters
+    ----------
+    path : Path
+        Path to existing DAC TOML file
+    machine : list[MachineParameters], optional
+        New/updated machine parameters
+    samples : list[SampleParameters], optional
+        New/updated sample parameters
+    experiments : list[ExperimentParameters], optional
+        New/updated experiment parameters
+    parent_widget : QWidget, optional
+        Parent widget for notification dialogs (if using Qt)
+    
+    Returns
+    -------
+    bool
+        True if file was updated successfully, False if no changes or error occurred
+    
+    Examples
+    --------
+    >>> path = Path("dac_run.toml")
+    >>> new_machines = [MachineParameters(...)]
+    >>> updated = update_dac_toml(path, machine=new_machines)
+    >>> if updated:
+    ...     print("DAC file updated successfully")
+    """
+    path = Path(path)
+    
+    # Validate file exists
+    if not path.exists():
+        print(f"File does not exist: {path}")
+        return False
+    
+    # Read existing file
+    try:
+        existing_dac, existing_machines, existing_samples, existing_experiments = read_dac_toml(path)
+    except Exception as e:
+        print(f"Error reading TOML file: {e}")
+        return False
+    
+    # Track if any changes were made
+    changes_made = False
+    
+    # Update machines
+    if machine:
+        existing_machine_names = {m.machine_name for m in existing_machines if m.machine_name}
+        new_machines_list = [
+            m for m in machine 
+            if m.machine_name and m.machine_name not in existing_machine_names
+        ]
+        if new_machines_list:
+            existing_machines.extend(new_machines_list)
+            changes_made = True
+            print(f"✓ Added {len(new_machines_list)} new machine(s): {', '.join(m.machine_name for m in new_machines_list)}")
+        
+        # Check for changed machines
+        _handle_machine_changes(existing_machines, machine)
+    
+    # Update samples
+    if samples:
+        existing_sample_names = {s.sample_name for s in existing_samples if s.sample_name}
+        new_samples_list = [
+            s for s in samples 
+            if s.sample_name and s.sample_name not in existing_sample_names
+        ]
+        if new_samples_list:
+            existing_samples.extend(new_samples_list)
+            changes_made = True
+            print(f"✓ Added {len(new_samples_list)} new sample(s): {', '.join(s.sample_name for s in new_samples_list)}")
+        
+        # Check for changed samples
+        if not _handle_sample_changes(existing_samples, samples):
+            print("✗ Sample update aborted due to inconsistencies")
+            return False
+    
+    # Update experiments
+    if experiments:
+        existing_exp_names = {e.exp_name for e in existing_experiments if e.exp_name}
+        new_experiments_list = [
+            e for e in experiments 
+            if e.exp_name and e.exp_name not in existing_exp_names
+        ]
+        if new_experiments_list:
+            existing_experiments.extend(new_experiments_list)
+            changes_made = True
+            print(f"✓ Added {len(new_experiments_list)} new experiment(s): {', '.join(e.exp_name for e in new_experiments_list)}")
+        
+        # Check for changed experiments
+        _handle_experiment_changes(existing_experiments, experiments)
+    
+    # Write back if changes were made
+    if changes_made:
+        try:
+            write_dac_toml(
+                existing_dac,
+                path,
+                machine=existing_machines,
+                samples=existing_samples,
+                experiments=existing_experiments,
+            )
+            print(f"✓ File updated: {path}")
+            return True
+        except Exception as e:
+            print(f"✗ Error writing TOML file: {e}")
+            return False
+    else:
+        print("ℹ No changes detected")
+        return False

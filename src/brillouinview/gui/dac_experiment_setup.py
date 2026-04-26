@@ -8,7 +8,7 @@ from setup_dac_window_ui import Ui_SetupDAC
 from setup_experiment_window_ui import Ui_SetupExperiment
 from setup_brillouin_machine_ui import Ui_Dialog as Ui_SetupMachine
 from brillouinview.setup_classes import DACParameters, ExperimentParameters, MachineParameters, SampleParameters
-from brillouinview.toml_io import write_dac_toml, write_machine_toml, read_machine_toml, read_dac_toml
+from brillouinview.toml_io import write_dac_toml, write_machine_toml, read_machine_toml, read_dac_toml, update_dac_toml
 
 # ---------------------------------------------------------------------------
 # SeupBrillouinMachineWindow
@@ -156,7 +156,7 @@ class SetupMachineWindow(QtWidgets.QDialog, Ui_SetupMachine):
 class SetupExperimentWindow(QtWidgets.QDialog, Ui_SetupExperiment):
     """Modal dialog for experiment setup. Returns ExperimentParameters."""
 
-    def __init__(self, parent=None, sample_parameters_list=None, dac_parameters=None, experiments=None, append=False):
+    def __init__(self, parent=None, sample_parameters_list=None, dac_parameters=None, experiments=None):
         super().__init__(parent)
         self.setupUi(self)
         self.setWindowModality(QtCore.Qt.ApplicationModal)
@@ -169,7 +169,6 @@ class SetupExperimentWindow(QtWidgets.QDialog, Ui_SetupExperiment):
         self.experiment_parameters: ExperimentParameters = None
         self.sample_parameters_list = sample_parameters_list if sample_parameters_list is not None else []
         self.experiments = experiments if experiments is not None else []
-        self.append = append
         self.dac_parameters = dac_parameters
 
         # Bottom bar buttons
@@ -270,8 +269,7 @@ class SetupExperimentWindow(QtWidgets.QDialog, Ui_SetupExperiment):
         if dialog.exec_() == QtWidgets.QDialog.Accepted:
             self._machine_parameters = dialog.machine_parameters
             self.le_exp_machine_display.setText(f"{self._machine_parameters.machine_name} "
-                                                f"at {self._machine_parameters.machine_location or ""}")
-            
+                                                f"at {self._machine_parameters.machine_location or ""}")            
             # Write machine TOML file to dac_directory/Machine/
             if self.dac_parameters and self.dac_parameters.dac_directory:
                 try:
@@ -282,7 +280,41 @@ class SetupExperimentWindow(QtWidgets.QDialog, Ui_SetupExperiment):
                     machine_filename = self._machine_parameters.machine_name.replace(" ", "_") + ".toml"
                     machine_file_path = machine_dir / machine_filename
                     
-                    if write_machine_toml(self._machine_parameters, machine_file_path, parent_widget=self):
+                    # Check if file already exists and is different from the one we loaded
+                    if machine_file_path.exists() and machine_parameters != self._machine_parameters: 
+                            # Changes detected, ask user to overwrite or rename
+                            reply = QtWidgets.QMessageBox.question(
+                                self,
+                                "File Already Exists",
+                                f"The machine parameters have been modified.\n\n"
+                                f"File: {machine_filename}\n\n"
+                                f"Do you want to overwrite the existing file?",
+                                QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
+                                QtWidgets.QMessageBox.No
+                            )
+                            if reply == QtWidgets.QMessageBox.Yes:
+                                # Overwrite the file
+                                write_machine_toml(self._machine_parameters, machine_file_path, parent_widget=self)
+                                QtWidgets.QMessageBox.information(
+                                    self,
+                                    "Machine File Saved",
+                                    f"Machine parameters successfully saved to:\n{machine_file_path}"
+                                )
+                            else:
+                                # User chose not to overwrite, ask to rename or cancel
+                                QtWidgets.QMessageBox.information(
+                                    self,
+                                    "Save Cancelled",
+                                    "Machine file not saved. To save, please change the machine name on load or create a new machine."
+                                )
+                                self.le_exp_machine_display.setText("")
+                                return
+                    elif machine_file_path.exists() and machine_parameters == self._machine_parameters:
+                        # Nothing changed no need to write file
+                        return
+                    
+                    else: 
+                        write_machine_toml(self._machine_parameters, machine_file_path, parent_widget=self)
                         QtWidgets.QMessageBox.information(
                             self,
                             "Machine File Saved",
@@ -412,17 +444,15 @@ class SetupExperimentWindow(QtWidgets.QDialog, Ui_SetupExperiment):
             return
 
         self.experiment_parameters = self.get_experiment_data()
-        self.experiments.append(self.experiment_parameters)
-
+        
         for sample_params in self.sample_parameters_list:
-            sample_params.sample_experiments.append(self.experiment_parameters.exp_name)
+            sample_params.sample_experiments.append(self.experiment_parameters)
             
         self.create_experiment_directory()
         dac_toml_path = self.dac_parameters.dac_directory / f"{self.dac_parameters.dac_name.replace(' ', '_')}.toml"
-        if write_dac_toml(dac=self.dac_parameters, 
-                          path=dac_toml_path, 
+        if update_dac_toml(path=dac_toml_path, 
                           samples=self.sample_parameters_list, 
-                          experiments=self.experiments,
+                          experiments=[self.experiment_parameters],
                           machine=[self._machine_parameters],
                           parent_widget=self):
             self.accept()
@@ -460,7 +490,6 @@ class SetupExperimentWindow(QtWidgets.QDialog, Ui_SetupExperiment):
             exp_notes=self.plainTextEdit.toPlainText().strip(),
             exp_machine_parameters=self._machine_parameters,
         ) 
-
 
     def on_clear_all(self):
         self.le_exp_name.clear()
@@ -900,7 +929,7 @@ class WelcomeWindow(QtWidgets.QDialog, Ui_Prequel_Dialog):
         
         # Step 3: Open SetupExperimentWindow with loaded DAC and samples
         dac.dac_directory = file_path.parent  # Set the DAC directory to the location of the loaded file
-        exp_dialog = SetupExperimentWindow(parent=self, sample_parameters_list=samples, dac_parameters=dac, experiments=experiments, append=True)
+        exp_dialog = SetupExperimentWindow(parent=self, sample_parameters_list=samples, dac_parameters=dac, experiments=experiments)
         if exp_dialog.exec_() == QtWidgets.QDialog.Accepted:
             self.dac_parameters = dac
             self.experiment_parameters = exp_dialog.experiment_parameters
