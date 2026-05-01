@@ -14,8 +14,10 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
         MainWindow.setObjectName("MainWindow")
-        MainWindow.resize(971, 1062)
+        MainWindow.resize(971, 921)
+        MainWindow.setMaximumSize(QtCore.QSize(16777215, 921))
         self.centralwidget = QtWidgets.QWidget(MainWindow)
+        self.centralwidget.setMaximumSize(QtCore.QSize(16777215, 950))
         self.centralwidget.setObjectName("centralwidget")
         self.verticalLayout_2 = QtWidgets.QVBoxLayout(self.centralwidget)
         self.verticalLayout_2.setObjectName("verticalLayout_2")
@@ -124,6 +126,7 @@ class Ui_MainWindow(object):
         self.label_5.setObjectName("label_5")
         self.gridLayout.addWidget(self.label_5, 2, 3, 1, 1)
         self.spinBox = QtWidgets.QSpinBox(self.tab_calibration)
+        self.spinBox.setProperty("value", 1)
         self.spinBox.setObjectName("spinBox")
         self.gridLayout.addWidget(self.spinBox, 0, 2, 1, 1)
         self.label_2 = QtWidgets.QLabel(self.tab_calibration)
@@ -167,7 +170,7 @@ class Ui_MainWindow(object):
         self.tab_calibration_center = QtWidgets.QVBoxLayout()
         self.tab_calibration_center.setObjectName("tab_calibration_center")
         self.graph = PlotWidget(self.tab_calibration)
-        self.graph.setMinimumSize(QtCore.QSize(0, 620))
+        self.graph.setMinimumSize(QtCore.QSize(0, 550))
         self.graph.setObjectName("graph")
         self.verticalLayout = QtWidgets.QVBoxLayout(self.graph)
         self.verticalLayout.setObjectName("verticalLayout")
