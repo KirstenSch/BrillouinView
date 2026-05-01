@@ -569,6 +569,25 @@ class SetupDACWindow(QtWidgets.QDialog, Ui_SetupDAC):
             QtWidgets.QMessageBox.information(self, "Cancelled", "DAC directory creation cancelled.")
             return
 
+        # Check if DAC directory already exists
+        date_prefix = self.dac_parameters.dac_date_load.strftime("%Y%m%d")
+        dac_name_formatted = self.dac_parameters.dac_name.replace(" ", "_")
+        dac_folder_name = f"{date_prefix}_{dac_name_formatted}"
+        dac_directory = Path(parent_directory) / dac_folder_name
+        
+        if dac_directory.exists():
+            reply = QtWidgets.QMessageBox.question(
+                self,
+                "Directory Already Exists",
+                f"A DAC directory with this name already exists:\n\n{dac_directory}\n\n"
+                f"Do you want to overwrite it?",
+                QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
+                QtWidgets.QMessageBox.No
+            )
+            if reply == QtWidgets.QMessageBox.No:
+                QtWidgets.QMessageBox.information(self, "Cancelled", "DAC creation cancelled.")
+                return
+
         # Create the DAC directory structure
         try:
             dac_directory = self._create_dac_directory_structure(parent_directory, self.dac_parameters)
