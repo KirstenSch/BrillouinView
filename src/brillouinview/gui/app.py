@@ -206,25 +206,14 @@ class BrillouinViewApp(QMainWindow):
         self.calibration_setup = CalibrationParameters()
         
         # Clear all line edits in ui_fields_dict
-        ui_fields = [
-            self.ui.le_angle,
-            self.ui.le_angle_unc,
-            self.ui.le_wavelength,
-            self.ui.le_wavelength_unc,
-            self.ui.le_spacing,
-            self.ui.le_spacing_unc,
-            self.ui.le_calibration,
-            self.ui.le_calibration_unc,
-        ]
-        
-        for line_edit in ui_fields:
-            line_edit.clear()
-        
-        # Clear calibration-specific fields
-        self.ui.le_calibration_data.clear()
+        self.ui.le_spacing.clear()
+        self.ui.le_spacing_unc.clear()
+        self.ui.le_calibration.clear()
+        self.ui.le_calibration_unc.clear()
         self.ui.le_pos_d1.clear()
         self.ui.le_pos_d2.clear()
         self.ui.le_pos_d3.clear()
+        self.ui.le_calibration_data.clear()
         
         # Reset calibration data
         self.calibration_data = pd.DataFrame()
@@ -240,6 +229,7 @@ class BrillouinViewApp(QMainWindow):
         # Disable buttons that require data
         self.ui.button_start_fit.setEnabled(False)
         self.ui.button_run_calibration.setEnabled(False)
+        self.ui.buttin.button_export.setEnabled(False)
         
         # Reinitialize the plot to ensure clean state
         self.init_plot()
