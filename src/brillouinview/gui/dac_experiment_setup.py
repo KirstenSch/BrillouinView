@@ -506,6 +506,7 @@ class SetupExperimentWindow(QtWidgets.QDialog, Ui_SetupExperiment):
         self.de_exp_end.setDate(QtCore.QDate.currentDate())
         self.plainTextEdit.clear()
         self._machine_parameters = None
+        self.experiment_parameters: ExperimentParameters = None
 
 
 # ---------------------------------------------------------------------------
@@ -546,6 +547,12 @@ class SetupDACWindow(QtWidgets.QDialog, Ui_SetupDAC):
 
         if not self.sample_parameters_list:
             QtWidgets.QMessageBox.warning(self, "No Samples", "Please add at least one sample with a name.")
+            return
+
+        # Check that all samples have unique names
+        sample_names = [sample.sample_name for sample in self.sample_parameters_list]
+        if len(sample_names) != len(set(sample_names)):
+            QtWidgets.QMessageBox.warning(self, "Missing Field", "Please give all samples an individual name.")
             return
 
         self.dac_parameters = self.get_dac_data()
@@ -626,7 +633,8 @@ class SetupDACWindow(QtWidgets.QDialog, Ui_SetupDAC):
             sample_notes = row_data['notes_edit'].text().strip()
 
             if not sample_name:
-                continue  # Skip rows without a sample name
+                QtWidgets.QMessageBox.warning(self, "Missing Field", "Please give all samples an individual name.")
+                return []
 
             sample_params = SampleParameters(
                 sample_name=sample_name,
