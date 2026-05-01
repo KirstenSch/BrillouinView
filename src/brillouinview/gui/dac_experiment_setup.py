@@ -451,25 +451,47 @@ class SetupExperimentWindow(QtWidgets.QDialog, Ui_SetupExperiment):
         for sample_params in self.sample_parameters_list:
             sample_params.sample_experiments.append(self.experiment_parameters)
             
-        self.create_experiment_directory()
-        dac_toml_path = self.dac_parameters.dac_directory / f"{self.dac_parameters.dac_name.replace(' ', '_')}.toml"
-        if update_dac_toml(path=dac_toml_path, 
-                          samples=self.sample_parameters_list, 
-                          experiments=[self.experiment_parameters],
-                          machine=[self._machine_parameters],
-                          parent_widget=self):
-            self.accept()
+        succesful_directory = self.create_experiment_directory()
+        if succesful_directory:
+            dac_toml_path = self.dac_parameters.dac_directory / f"{self.dac_parameters.dac_name.replace(' ', '_')}.toml"
+            if update_dac_toml(path=dac_toml_path, 
+                            samples=self.sample_parameters_list, 
+                            experiments=[self.experiment_parameters],
+                            machine=[self._machine_parameters],
+                            parent_widget=self):
+                self.accept()
 
-    def create_experiment_directory(self):
+    def create_experiment_directory(self) -> bool:
         if not self.dac_parameters or not self.dac_parameters.dac_directory:
-            return
+            return False
         
         experiments_dir = self.dac_parameters.dac_directory / "Experiments"
         experiments_dir.mkdir(parents=True, exist_ok=True)
 
         exp_dir_name = self.experiment_parameters.exp_name.replace(" ", "_")
         exp_directory = experiments_dir / exp_dir_name
-        exp_directory.mkdir(parents=True, exist_ok=True)
+
+        if exp_directory.exists():
+            reply = QtWidgets.QMessageBox.question(
+                self,
+                "Directory Already Exists",
+                f"An Experiment directory with this name already exists:\n\n{exp_directory}\n\n"
+                f"Do you want to overwrite it?",
+                QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
+                QtWidgets.QMessageBox.No
+            )
+            if reply == QtWidgets.QMessageBox.No:
+                QtWidgets.QMessageBox.information(self, "Cancelled", "Experiment creation cancelled.")
+                return False
+            elif reply == QtWidgets.QMessageBox.Yes:
+                # Optionally, you could add code here to clear the existing directory before proceeding
+                return True
+            else:
+                QtWidgets.QMessageBox.information(self, "Cancelled", "Experiment creation cancelled.")
+                return False
+        else:
+            exp_directory.mkdir(parents=True, exist_ok=True)
+            return True
 
     def get_experiment_data(self) -> ExperimentParameters:
         def parse_float(text):
