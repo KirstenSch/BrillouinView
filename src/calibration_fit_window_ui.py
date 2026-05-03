@@ -14,7 +14,7 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 class Ui_CalibrationFitWindow(object):
     def setupUi(self, CalibrationFitWindow):
         CalibrationFitWindow.setObjectName("CalibrationFitWindow")
-        CalibrationFitWindow.resize(981, 682)
+        CalibrationFitWindow.resize(1194, 682)
         self.horizontalLayout = QtWidgets.QHBoxLayout(CalibrationFitWindow)
         self.horizontalLayout.setObjectName("horizontalLayout")
         self.left = QtWidgets.QVBoxLayout()
@@ -27,7 +27,7 @@ class Ui_CalibrationFitWindow(object):
         self.horizontalLayout_2 = QtWidgets.QHBoxLayout()
         self.horizontalLayout_2.setObjectName("horizontalLayout_2")
         self.tableWidget = QtWidgets.QTableWidget(CalibrationFitWindow)
-        self.tableWidget.setMinimumSize(QtCore.QSize(600, 0))
+        self.tableWidget.setMinimumSize(QtCore.QSize(750, 0))
         self.tableWidget.setObjectName("tableWidget")
         self.tableWidget.setColumnCount(0)
         self.tableWidget.setRowCount(0)
@@ -42,7 +42,7 @@ class Ui_CalibrationFitWindow(object):
         self.label.setObjectName("label")
         self.verticalLayout_2.addWidget(self.label)
         self.le_used_function = QtWidgets.QLineEdit(CalibrationFitWindow)
-        self.le_used_function.setMaximumSize(QtCore.QSize(200, 16777215))
+        self.le_used_function.setMaximumSize(QtCore.QSize(500, 16777215))
         self.le_used_function.setAlignment(QtCore.Qt.AlignCenter)
         self.le_used_function.setReadOnly(True)
         self.le_used_function.setObjectName("le_used_function")

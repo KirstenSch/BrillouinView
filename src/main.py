@@ -1,6 +1,10 @@
+import os
 import sys
-from PyQt5.QtWidgets import QApplication
 
+# Force X11 backend before importing PyQt5
+os.environ['QT_QPA_PLATFORM'] = 'xcb'
+
+from PyQt5.QtWidgets import QApplication
 from brillouinview.gui.app import BrillouinViewApp
 
 if __name__ == "__main__":
