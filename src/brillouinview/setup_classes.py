@@ -27,23 +27,20 @@ class DACParameters:
 @dataclass
 class CalibrationParameters:
     exp_machine_parameters: MachineParameters = None
-    calibration_file_path: Path = Path()
+    calibration_file_path: Path = None
     calibration_OD: int = None
     calibration_value: float = None
     calibration_value_unc: float = None
     calibration_factor: float = None
     calibration_factor_unc: float = None
-    calibration_file_path: Path = Path()
     calibration_peak_number: int = None
     calibration_peak_function: str = "" # e.g., "Gaussian", "Lorentzian"
     calibration_peak_parameters: list = None  # e.g., [amplitude, center, width]
-    machine_spacing: float = None
-    machine_spacing_unc: float = None
 
 @dataclass
 class ExperimentParameters:
     exp_machine_parameters: MachineParameters = None
-    exp_calibration_parameters: CalibrationParameters = None
+    exp_calibration_toml: Path = None
     exp_name: str = None
     exp_temperature: float = None
     exp_temperature_unc: float = None
@@ -66,7 +63,7 @@ class SampleParameters:
 
 @dataclass
 class SpectrumParameters:
-    spectrum_file_path: Path = Path()
+    spectrum_file_path: Path = None
     spectrum_date: date = None
     spectrum_experiment: ExperimentParameters = None
     spectrum_sample: SampleParameters = None

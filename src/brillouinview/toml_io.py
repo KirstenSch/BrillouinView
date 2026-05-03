@@ -225,11 +225,29 @@ def calibration_to_toml(params: CalibrationParameters) -> tomlkit.TOMLDocument:
     _set(t, "calibration_factor",          params.calibration_factor)
     _set(t, "calibration_factor_unc",      params.calibration_factor_unc, "1-sigma")
     t.add(nl())
+    _set(t, "calibration_OD",               params.calibration_OD, "usually 1 or 2")
     _set(t, "calibration_peak_number",     params.calibration_peak_number)
     _set(t, "calibration_peak_function",   params.calibration_peak_function,
          "e.g. Gaussian, Lorentzian")
-    _set(t, "calibration_peak_parameters", params.calibration_peak_parameters,
-         "[amplitude, center, width]")
+    
+    # Convert peak parameters: if they contain uncertainties.corr.AffineScalarFunc objects,
+    # convert to strings; otherwise pass as-is
+    peak_params = params.calibration_peak_parameters
+    if peak_params and isinstance(peak_params, list):
+        converted_peaks = []
+        for peak in peak_params:
+            if isinstance(peak, dict):
+                converted_peak = {}
+                for key, val in peak.items():
+                    # Convert AffineScalarFunc to string representation
+                    converted_peak[key] = str(val)
+                converted_peaks.append(converted_peak)
+            else:
+                converted_peaks.append(peak)
+        peak_params = converted_peaks
+    
+    _set(t, "calibration_peak_parameters", peak_params,
+         "list of dicts with keys: amplitude, center, sigma, fwhm, area")
 
     doc.add("calibration", t)
     return doc
@@ -250,7 +268,7 @@ def calibration_from_toml(doc: tomlkit.TOMLDocument) -> CalibrationParameters:
     )
 
 
-def write_calibration_toml(params: CalibrationParameters, path: Path, parent_widget=None) -> bool:
+def write_calibration_toml(params: CalibrationParameters, path: Path, parent_widget=None):
     """
     Write calibration parameters to TOML file with overwrite protection.
     
@@ -271,8 +289,6 @@ def write_calibration_toml(params: CalibrationParameters, path: Path, parent_wid
     proceed, final_path = handle_file_overwrite(Path(path), parent_widget)
     if proceed:
         Path(final_path).write_text(tomlkit.dumps(calibration_to_toml(params)), encoding="utf-8")
-        return True
-    return False
 
 
 def read_calibration_toml(path: Path) -> CalibrationParameters:
@@ -312,6 +328,7 @@ def _experiment_to_table(exp: ExperimentParameters) -> Table:
     t.add(nl())
     _set(t, "calibration_factor",     exp.calibration_factor)
     _set(t, "calibration_factor_unc", exp.calibration_factor_unc, "1-sigma")
+    _set(t, "exp_calibration_toml", exp.exp_calibration_toml, "path to calibration TOML file")
     return t
 
 
@@ -339,6 +356,7 @@ def _sample_to_table(sample: SampleParameters) -> Table:
 
 def dac_to_toml(
     dac: DACParameters,
+    path: Path,
     machine: Optional[list[MachineParameters]] = None,
     samples: Optional[list[SampleParameters]] = None,
     experiments: Optional[list[ExperimentParameters]] = None,
@@ -367,6 +385,7 @@ def dac_to_toml(
     _set(t, "dac_date_load",      dac.dac_date_load)
     _set(t, "dac_owner",          dac.dac_owner)
     _set(t, "dac_notes",          dac.dac_notes)
+    _set(t, "dac_directory",      path, "absolute path to dac toml for related files (e.g. machine, experiments)")
     
     # Sample references — names only, no duplication
     if dac.dac_samples:
@@ -438,6 +457,7 @@ def dac_from_toml(
         dac_date_load      = _get(d, "dac_date_load", date),
         dac_owner          = _get(d, "dac_owner"),
         dac_notes          = _get(d, "dac_notes"),
+        dac_directory      = _get(d, "dac_directory", Path, Path().resolve()),
     )
 
     # Machine
@@ -469,6 +489,7 @@ def dac_from_toml(
             exp_pressure_unc       = _get(e, "exp_pressure_unc",       float),
             calibration_factor     = _get(e, "calibration_factor",     float),
             calibration_factor_unc = _get(e, "calibration_factor_unc", float),
+            exp_calibration_toml   = _get(e, "exp_calibration_toml", Path, Path().resolve()),
         )
         experiments.append(exp)
 
@@ -538,7 +559,7 @@ def write_dac_toml(
     proceed, final_path = handle_file_overwrite(Path(path), parent_widget)
     if proceed:
         Path(final_path).write_text(
-            tomlkit.dumps(dac_to_toml(dac, machine, samples, experiments)),
+            tomlkit.dumps(dac_to_toml(dac, final_path, machine, samples, experiments)),
             encoding="utf-8",
         )
         return True
@@ -738,6 +759,7 @@ def _handle_experiment_changes(
             new_exp.exp_notes != existing_exp.exp_notes or
             new_exp.calibration_factor != existing_exp.calibration_factor or
             new_exp.calibration_factor_unc != existing_exp.calibration_factor_unc or
+            new_exp.exp_calibration_toml != existing_exp.exp_calibration_toml or
             _get_machine_name(new_exp.exp_machine_parameters) != _get_machine_name(existing_exp.exp_machine_parameters)):
             
             if not edit_experiment:
@@ -757,7 +779,7 @@ def _handle_experiment_changes(
             existing_exp.calibration_factor = new_exp.calibration_factor
             existing_exp.calibration_factor_unc = new_exp.calibration_factor_unc
             existing_exp.exp_machine_parameters = new_exp.exp_machine_parameters
-            existing_exp.exp_calibration_parameters = new_exp.exp_calibration_parameters
+            existing_exp.exp_calibration_toml = new_exp.exp_calibration_toml
             print(f"✓ Experiment '{new_exp.exp_name}': updated")
     
     return True  # All checks passed
@@ -826,7 +848,10 @@ def update_dac_toml(
     
     # Track if any changes were made
     changes_made = False
-    
+    machine_changes = False
+    sample_changes = False
+    exp_changes = False
+
     # Update machines
     if machine:
         existing_machine_names = {m.machine_name for m in existing_machines if m.machine_name}
@@ -840,9 +865,8 @@ def update_dac_toml(
             print(f"✓ Added {len(new_machines_list)} new machine(s): {', '.join(m.machine_name for m in new_machines_list)}")
         
         # Check for changed machines
-        if not _handle_machine_changes(existing_machines, machine):
-            print("✗ Machine update aborted due to inconsistencies")
-            return False
+        machine_changes = _handle_machine_changes(existing_machines, machine)
+
 
     
     # Update samples
@@ -858,10 +882,8 @@ def update_dac_toml(
             print(f"✓ Added {len(new_samples_list)} new sample(s): {', '.join(s.sample_name for s in new_samples_list)}")
         
         # Check for changed samples
-        if not _handle_sample_changes(existing_samples, samples):
-            print("✗ Sample update aborted due to inconsistencies")
-            return False
-    
+        sample_changes = _handle_sample_changes(existing_samples, samples)
+
     # Update experiments
     if experiments:
         existing_exp_names = {e.exp_name for e in existing_experiments if e.exp_name}
@@ -875,12 +897,11 @@ def update_dac_toml(
             print(f"✓ Added {len(new_experiments_list)} new experiment(s): {', '.join(e.exp_name for e in new_experiments_list)}")
         
         # Check for changed experiments
-        if not _handle_experiment_changes(existing_experiments, experiments, edit_experiment):
-            print("✗ Experiment update aborted due to inconsistencies")
-            return False
+        exp_changes = _handle_experiment_changes(existing_experiments, experiments, edit_experiment)
+
     
     # Write back if changes were made
-    if changes_made:
+    if changes_made or (experiments and exp_changes) or (samples and sample_changes) or (machine and machine_changes):
         try:
             write_dac_toml(
                 existing_dac,

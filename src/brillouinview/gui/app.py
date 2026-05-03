@@ -1,6 +1,6 @@
 from itertools import count
 from pathlib import Path
-from PyQt5.QtWidgets import QMainWindow, QLineEdit, QFileDialog, QMessageBox, QDialog
+from PyQt5.QtWidgets import QMainWindow, QFileDialog, QMessageBox, QDialog
 
 from brillouinview.helping_functions import nominal
 from uncertainties import ufloat
@@ -12,10 +12,11 @@ from brillouinview_main_window_ui import Ui_MainWindow
 
 from brillouinview.gui.calibration_tab import CalibrationFitWindow
 from brillouinview.io_fileparsing import read_ghost_file
+from brillouinview.toml_io import write_calibration_toml, update_dac_toml
 from brillouinview.fitting_algorithm import gaussian
 from PyQt5.QtCore import Qt
-from brillouinview.setup_classes import DACParameters, MachineParameters, ExperimentParameters, CalibrationParameters
-from brillouinview.gui.dac_experiment_setup import SetupExperimentWindow, SetupDACWindow, WelcomeWindow
+from brillouinview.setup_classes import CalibrationParameters
+from brillouinview.gui.dac_experiment_setup import WelcomeWindow
 
 class BrillouinViewApp(QMainWindow):
     def __init__(self):
@@ -31,6 +32,8 @@ class BrillouinViewApp(QMainWindow):
         self.ui.le_dac.setText(self.dac_parameters.dac_name)
         self.ui.le_experiment.setText(self.experiment_parameters.exp_name)
         self.ui.le_machine.setText(self.machine_parameters.machine_name)
+        self.ui.le_spacing.setText(str(self.machine_parameters.spacing))
+        self.ui.le_spacing_unc.setText(str(self.machine_parameters.spacing_unc))
 
         #calibration tab setup
         # Todo:Check for existing calibration parameters in experiment
@@ -39,6 +42,7 @@ class BrillouinViewApp(QMainWindow):
         self.ui.button_start_fit.clicked.connect(self.start_calibration_fit)
         self.ui.button_run_calibration.clicked.connect(self.calculate_calibration)
         self.ui.button_reset.clicked.connect(self.reset_entires)
+        self.ui.button_export.clicked.connect(self.export_calibration_parameters)
         self.init_plot()
 
     def run_welcome_window(self):
@@ -160,7 +164,7 @@ class BrillouinViewApp(QMainWindow):
             )
 
     def calculate_calibration(self):
-       
+
         # Extract center values
         centers = [param['center'] for param in self.calibration_setup.calibration_peak_parameters]
         # Calculate delta_channel based on number of peaks
@@ -175,26 +179,37 @@ class BrillouinViewApp(QMainWindow):
             QMessageBox.critical(self, "Error", "Calibration calculation failed. Number of peaks must be 2 or 3.")
             return
 
-        # Update experiment setup and UI
+
         self.calibration_setup.calibration_value = nominal(delta_channel)
         self.calibration_setup.calibration_value_unc = delta_channel.std_dev
+
+        # Caluclate channel shift factor
+        self.calibration_setup.calibration_OD = self.ui.spinBox_OD.value()
+        self.calibration_setup.exp_machine_parameters = self.machine_parameters
+        self.calibration_setup.calibration_factor, self.calibration_setup.calibration_factor_unc = self.calculate_channel_bshift_factor()  # Assuming first order diffraction for now
+
+        # Update experiment setup and UI
         self.ui.le_calibration.setText(f"{self.calibration_setup.calibration_value:.6f}")
         self.ui.le_calibration_unc.setText(f"{self.calibration_setup.calibration_value_unc:.6f}")
+        self.ui.le_calfactor.setText(f"{self.calibration_setup.calibration_factor:.6e}")
+        self.ui.le_calfactor_unc.setText(f"{self.calibration_setup.calibration_factor_unc:.6e}")
+        self.ui.button_export.setEnabled(True)
 
-    def calculate_channel_bshift_factor(exp_setup: CalibrationParameters, OD: int = 1) -> ufloat:
+    def calculate_channel_bshift_factor(self) -> float:
         # Calculate the Factor to be multiplied with the Brillouin Shift in Channels to get the Shift as a Frequency
         # OD: Order of Diffraction
         # calibration_value: Calibration Value in Channels
         # spacing: Mirror Spacing in meters
         # Returns: calibration_factor in Hz/Channel
         
-        calibration_value = ufloat(exp_setup.calibration_value, exp_setup.calibration_value_unc)
-        spacing = ufloat(exp_setup.spacing, exp_setup.spacing_unc)
+        OD = self.calibration_setup.calibration_OD
+        calibration_value = ufloat(self.calibration_setup.calibration_value, self.calibration_setup.calibration_value_unc)
+        spacing = ufloat(self.calibration_setup.exp_machine_parameters.spacing, self.calibration_setup.exp_machine_parameters.spacing_unc)
         
         speed_of_light = 299792458 # Speed of light in m/s
         calibration_factor = speed_of_light * OD / (2 * spacing * calibration_value)
         
-        return calibration_factor
+        return calibration_factor.nominal_value, calibration_factor.std_dev
 
     def reset_entires(self):
         """Reset all entries, plots, and experiment setup to initial state"""
@@ -206,10 +221,10 @@ class BrillouinViewApp(QMainWindow):
         self.calibration_setup = CalibrationParameters()
         
         # Clear all line edits in ui_fields_dict
-        self.ui.le_spacing.clear()
-        self.ui.le_spacing_unc.clear()
         self.ui.le_calibration.clear()
         self.ui.le_calibration_unc.clear()
+        self.ui.le_calfactor.clear()
+        self.ui.le_calfactor_unc.clear()
         self.ui.le_pos_d1.clear()
         self.ui.le_pos_d2.clear()
         self.ui.le_pos_d3.clear()
@@ -229,7 +244,70 @@ class BrillouinViewApp(QMainWindow):
         # Disable buttons that require data
         self.ui.button_start_fit.setEnabled(False)
         self.ui.button_run_calibration.setEnabled(False)
-        self.ui.button.button_export.setEnabled(False)
+        self.ui.button_export.setEnabled(False)
         
         # Reinitialize the plot to ensure clean state
         self.init_plot()
+
+    def export_calibration_parameters(self):
+        # Define the directory to save the calibration parameters 
+        # DAC Path + Machine Name + "Calibration"
+        dac_directory = self.dac_parameters.dac_directory
+        machine_name = self.machine_parameters.machine_name
+        calibration_directory = dac_directory.parent / "Machine" / machine_name / "Calibration"
+        calibration_directory.mkdir(parents=True, exist_ok=True)    
+
+        # Extract filename from calibration file name and use it for the toml file
+        calibration_filename = self.calibration_filepath.stem
+        calibration_toml_path = calibration_directory / f"{calibration_filename}.toml"
+            
+        # Chekc if file already exists and ask user if they want to overwrite it
+        if calibration_toml_path.exists():
+            reply = QMessageBox.question(
+                self, 
+                "File Exists", 
+                f"The file {calibration_toml_path} already exists. Do you want to overwrite it?", 
+                QMessageBox.Yes | QMessageBox.No, 
+                QMessageBox.No  
+                )
+            if reply == QMessageBox.No:
+                QMessageBox.information(self, "Cancelled", "Export cancelled.")
+                return  
+            elif reply == QMessageBox.Yes:
+                pass  # Proceed with overwriting the file
+            else:
+                QMessageBox.information(self, "Cancelled", "Export cancelled.")
+                return  
+
+        # copy calibration file to calbration directory and rewrite path in calibration_file_path to new location in calibration directory to copied file
+        try:
+            # Copy the original calibration file to the new location
+            new_calibration_file_path = calibration_directory / self.calibration_filepath.name
+            if not new_calibration_file_path.exists():
+                new_calibration_file_path.write_bytes(self.calibration_filepath.read_bytes())
+            
+            # Update the calibration_file_path in the calibration setup to point to the new location
+            self.calibration_setup.calibration_file_path = new_calibration_file_path
+
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Failed to export calibration file: {e}")
+        # write Calibration toml
+        try:
+            write_calibration_toml(params=self.calibration_setup, path=calibration_toml_path)
+                    # Update ExperimentParameters with calibration_factor + unc and exp_calibratio_parameters
+        
+            self.experiment_parameters.calibration_factor = self.calibration_setup.calibration_factor
+            self.experiment_parameters.calibration_factor_unc = self.calibration_setup.calibration_factor_unc
+            self.experiment_parameters.exp_calibration_toml = calibration_toml_path
+
+            # Update DAC toml
+            try:
+                update_dac_toml(path=self.dac_parameters.dac_directory, experiments=[self.experiment_parameters], edit_experiment=True)
+            except Exception as e:
+                QMessageBox.critical(self, "Error", f"Failed to update DAC parameters: {e}")
+
+            pass
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Failed to export calibration parameters to toml: {e}")
+
+

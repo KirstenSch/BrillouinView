@@ -197,15 +197,15 @@ class SetupExperimentWindow(QtWidgets.QDialog, Ui_SetupExperiment):
             self.le_exp_machine_display.setText(f"{self._machine_parameters.machine_name} "
                                                 f"at {self._machine_parameters.machine_location or ""}")
             
-            # Write machine TOML file to dac_directory/Machine/
+            # Write machine TOML file to dac_directory/Machine/machine_name
             if self.dac_parameters and self.dac_parameters.dac_directory:
                 try:
-                    machine_dir = self.dac_parameters.dac_directory / "Machine"
-                    machine_dir.mkdir(parents=True, exist_ok=True)
                     
                     # Create filename from machine_name with underscores instead of spaces
-                    machine_filename = self._machine_parameters.machine_name.replace(" ", "_") + ".toml"
-                    machine_file_path = machine_dir / machine_filename
+                    machine_filename = self._machine_parameters.machine_name.replace(" ", "_")
+                    machine_dir = self.dac_parameters.dac_directory.parent / "Machine" / machine_filename
+                    machine_dir.mkdir(parents=True, exist_ok=True)
+                    machine_file_path = machine_dir / f"{machine_filename}.toml"
                     
                     if write_machine_toml(self._machine_parameters, machine_file_path, parent_widget=self):
                         QtWidgets.QMessageBox.information(
@@ -228,9 +228,8 @@ class SetupExperimentWindow(QtWidgets.QDialog, Ui_SetupExperiment):
             return
         
         # Get the machine directory path
-        machine_directory = self.dac_parameters.dac_directory / "Machine"
+        machine_directory = self.dac_parameters.dac_directory.parent / "Machine" 
     
-        
         # Open file dialog
         file_path, _ = QtWidgets.QFileDialog.getOpenFileName(
             self,
@@ -276,12 +275,11 @@ class SetupExperimentWindow(QtWidgets.QDialog, Ui_SetupExperiment):
             # Write machine TOML file to dac_directory/Machine/
             if self.dac_parameters and self.dac_parameters.dac_directory:
                 try:
-                    machine_dir = self.dac_parameters.dac_directory / "Machine"
-                    machine_dir.mkdir(parents=True, exist_ok=True)
-                    
                     # Create filename from machine_name with underscores instead of spaces
-                    machine_filename = self._machine_parameters.machine_name.replace(" ", "_") + ".toml"
-                    machine_file_path = machine_dir / machine_filename
+                    machine_filename = self._machine_parameters.machine_name.replace(" ", "_")
+                    machine_dir = self.dac_parameters.dac_directory.parent / "Machine" / machine_filename
+                    machine_dir.mkdir(parents=True, exist_ok=True)
+                    machine_file_path = machine_dir / f"{machine_filename}.toml"
                     
                     # Check if file already exists and is different from the one we loaded
                     if machine_file_path.exists() and machine_parameters != self._machine_parameters: 
@@ -453,7 +451,7 @@ class SetupExperimentWindow(QtWidgets.QDialog, Ui_SetupExperiment):
             
         succesful_directory = self.create_experiment_directory()
         if succesful_directory:
-            dac_toml_path = self.dac_parameters.dac_directory / f"{self.dac_parameters.dac_name.replace(' ', '_')}.toml"
+            dac_toml_path = self.dac_parameters.dac_directory
             if update_dac_toml(path=dac_toml_path, 
                             samples=self.sample_parameters_list, 
                             experiments=[self.experiment_parameters],
@@ -465,7 +463,7 @@ class SetupExperimentWindow(QtWidgets.QDialog, Ui_SetupExperiment):
         if not self.dac_parameters or not self.dac_parameters.dac_directory:
             return False
         
-        experiments_dir = self.dac_parameters.dac_directory / "Experiments"
+        experiments_dir = self.dac_parameters.dac_directory.parent / "Experiments"
         experiments_dir.mkdir(parents=True, exist_ok=True)
 
         exp_dir_name = self.experiment_parameters.exp_name.replace(" ", "_")
@@ -596,6 +594,7 @@ class SetupDACWindow(QtWidgets.QDialog, Ui_SetupDAC):
         dac_name_formatted = self.dac_parameters.dac_name.replace(" ", "_")
         dac_folder_name = f"{date_prefix}_{dac_name_formatted}"
         dac_directory = Path(parent_directory) / dac_folder_name
+         # Set the DAC directory in parameters for later use
         
         if dac_directory.exists():
             reply = QtWidgets.QMessageBox.question(
@@ -613,10 +612,11 @@ class SetupDACWindow(QtWidgets.QDialog, Ui_SetupDAC):
         # Create the DAC directory structure
         try:
             dac_directory = self._create_dac_directory_structure(parent_directory, self.dac_parameters)
-            self.dac_parameters.dac_directory = dac_directory
             
             # Write DAC TOML file
             dac_toml_path = dac_directory / f"{self.dac_parameters.dac_name.replace(' ', '_')}.toml"
+            self.dac_parameters.dac_directory = dac_toml_path
+
             write_dac_toml(dac=self.dac_parameters, 
                            path=dac_toml_path, 
                            samples=self.sample_parameters_list, 
@@ -636,7 +636,6 @@ class SetupDACWindow(QtWidgets.QDialog, Ui_SetupDAC):
         
         Directory structure:
         <parent_directory>/YYYYMMDD_<dac_name>/
-            ├── Calibration/
             ├── Machine/
             └── Experiments/
             └── Samples/
@@ -659,7 +658,7 @@ class SetupDACWindow(QtWidgets.QDialog, Ui_SetupDAC):
         dac_directory.mkdir(parents=True, exist_ok=True)
         
         # Create subdirectories
-        subdirs = ["Calibration", "Machine", "Experiments", "Samples"]
+        subdirs = ["Machine", "Experiments", "Samples"]
         for subdir in subdirs:
             (dac_directory / subdir).mkdir(parents=True, exist_ok=True)
         
@@ -695,7 +694,8 @@ class SetupDACWindow(QtWidgets.QDialog, Ui_SetupDAC):
             dac_pressuremedium=self.cb_dac_pressure_medium.currentText(),
             dac_date_load=date(qdate.year(), qdate.month(), qdate.day()),
             dac_notes=self.te_dac_notes.toPlainText().strip(),
-            dac_samples=[sample.sample_name for sample in self.sample_parameters_list]
+            dac_samples=[sample.sample_name for sample in self.sample_parameters_list],
+            dac_directory=None  # Will be set after directory creation
         )
 
     def on_clear_all(self):
