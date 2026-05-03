@@ -1,7 +1,5 @@
-from PyQt5.QtGui import QDoubleValidator
 from PyQt5.QtCore import pyqtSignal
-from PyQt5.QtWidgets import  QDialog, QLineEdit, QMessageBox, QTableWidgetItem
-from pathlib import Path
+from PyQt5.QtWidgets import  QDialog, QFileDialog, QMessageBox, QTableWidgetItem
 from calibration_fit_window_ui import Ui_CalibrationFitWindow
 from brillouinview.io_fileparsing import read_ghost_file
 from brillouinview.fitting_algorithm import fit_peaks    
@@ -37,6 +35,7 @@ class CalibrationFitWindow(QDialog):
         self.ui_calplot.button_cancel_calfit.clicked.connect(self.close)
         self.ui_calplot.button_accept_calfit.clicked.connect(self.apply_calibration_fit)
         self.ui_calplot.button_adjust_calfit.clicked.connect(self.adjust_calibration_fit)
+        self.ui_calplot.button_save_screen.clicked.connect(self.save_screenshot)
 
     def start_fit_window(self):
         # --- pre-checks (no threading needed, these are fast) ---
@@ -325,6 +324,22 @@ class CalibrationFitWindow(QDialog):
         # Plain float
         return float(text)
 
+    def save_screenshot(self):
+        # 1. Grab the window (including all its children)
+        # Using self.grab() captures the QMainWindow and its contents
+        screenshot = self.grab()
+        
+        # 2. Save the pixmap to a file
+        save_directory =QFileDialog.getExistingDirectory(
+            self,
+            "Select Directory to Save Screenshot",
+            "",
+            options = QFileDialog.ShowDirsOnly | QFileDialog.DontResolveSymlinks
+        )
+
+        dat_name = self.experiment_setup.calibration_file_path.name.split(".")[0]
+        filename = save_directory + f"/{dat_name}_fit_screenshot.png"
+        screenshot.save(filename, "PNG")
 
 class FittingWorker(QThread):
     # Todo:
