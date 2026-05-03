@@ -247,6 +247,7 @@ class BrillouinViewApp(QMainWindow):
         # Disable buttons that require data
         self.ui.button_start_fit.setEnabled(False)
         self.ui.button_run_calibration.setEnabled(False)
+        self.ui.button_run_calibration.setStyleSheet("")  # Reset to default style
         self.ui.button_export.setEnabled(False)
         
         # Reinitialize the plot to ensure clean state
