@@ -256,7 +256,7 @@ class BrillouinViewApp(QMainWindow):
         # Define the directory to save the calibration parameters 
         # DAC Path + Machine Name + "Calibration"
         dac_directory = self.dac_parameters.dac_directory
-        machine_name = self.machine_parameters.machine_name
+        machine_name = self.machine_parameters.machine_name.replace(" ", "_")  # Replace spaces with underscores for folder name
         calibration_directory = dac_directory.parent / "Machine" / machine_name / "Calibration"
         calibration_directory.mkdir(parents=True, exist_ok=True)    
 
