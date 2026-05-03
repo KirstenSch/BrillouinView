@@ -404,7 +404,7 @@ class TestEndToEndWorkflow:
         dac_dir.mkdir(parents=True, exist_ok=True)
         
         # Create subdirectories
-        for subdir in ["Calibration", "Machine", "Experiments", "Samples"]:
+        for subdir in ["Machine", "Experiments", "Samples"]:
             (dac_dir / subdir).mkdir(parents=True, exist_ok=True)
 
         # Create DAC parameters with the temp directory
@@ -415,8 +415,9 @@ class TestEndToEndWorkflow:
             dac_date_load=date(2026, 4, 11),
             dac_notes="Test notes",
             dac_samples=["Sample 1"],
-            dac_directory=dac_dir,
+            dac_directory= None,
         )
+        dac_params.dac_directory = dac_dir / f"{dac_params.dac_name.replace(' ', '_')}.toml"
 
         # Create sample parameters
         sample_params = SampleParameters(
@@ -477,7 +478,7 @@ class TestEndToEndWorkflow:
 
         # Get experiment data and write TOML file
         exp_window.experiment_parameters = exp_window.get_experiment_data()
-        dac_toml_path = dac_params.dac_directory / f"{dac_params.dac_name.replace(' ', '_')}.toml"
+        dac_toml_path = dac_params.dac_directory 
         
         # Actually write the TOML file
         write_dac_toml(
