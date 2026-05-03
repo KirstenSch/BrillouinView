@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>983</width>
+    <width>1194</width>
     <height>682</height>
    </rect>
   </property>
@@ -41,7 +41,7 @@
         <widget class="QTableWidget" name="tableWidget">
          <property name="minimumSize">
           <size>
-           <width>600</width>
+           <width>750</width>
            <height>0</height>
           </size>
          </property>
@@ -115,8 +115,8 @@
            </property>
            <property name="sizeHint" stdset="0">
             <size>
-             <width>20</width>
-             <height>40</height>
+             <width>500</width>
+             <height>16777215</height>
             </size>
            </property>
           </spacer>

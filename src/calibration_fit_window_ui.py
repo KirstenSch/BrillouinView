@@ -14,7 +14,7 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 class Ui_CalibrationFitWindow(object):
     def setupUi(self, CalibrationFitWindow):
         CalibrationFitWindow.setObjectName("CalibrationFitWindow")
-        CalibrationFitWindow.resize(983, 682)
+        CalibrationFitWindow.resize(1194, 682)
         self.horizontalLayout = QtWidgets.QHBoxLayout(CalibrationFitWindow)
         self.horizontalLayout.setObjectName("horizontalLayout")
         self.left = QtWidgets.QVBoxLayout()
@@ -29,7 +29,7 @@ class Ui_CalibrationFitWindow(object):
         self.horizontalLayout_2.setContentsMargins(0, -1, -1, -1)
         self.horizontalLayout_2.setObjectName("horizontalLayout_2")
         self.tableWidget = QtWidgets.QTableWidget(CalibrationFitWindow)
-        self.tableWidget.setMinimumSize(QtCore.QSize(600, 0))
+        self.tableWidget.setMinimumSize(QtCore.QSize(750, 0))
         self.tableWidget.setObjectName("tableWidget")
         self.tableWidget.setColumnCount(0)
         self.tableWidget.setRowCount(0)

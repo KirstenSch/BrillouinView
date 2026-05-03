@@ -2,19 +2,115 @@
 <ui version="4.0">
  <class>MainWindow</class>
  <widget class="QMainWindow" name="MainWindow">
+  <property name="enabled">
+   <bool>true</bool>
+  </property>
   <property name="geometry">
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1039</width>
-    <height>1013</height>
+    <width>971</width>
+    <height>921</height>
    </rect>
   </property>
+  <property name="maximumSize">
+   <size>
+    <width>16777215</width>
+    <height>921</height>
+   </size>
+  </property>
   <property name="windowTitle">
-   <string>BrillouinView 1.0.0 - 2025</string>
+   <string>BrillouinView 1.0.0 - 2026</string>
   </property>
   <widget class="QWidget" name="centralwidget">
+   <property name="maximumSize">
+    <size>
+     <width>16777215</width>
+     <height>950</height>
+    </size>
+   </property>
    <layout class="QVBoxLayout" name="verticalLayout_2">
+    <item>
+     <layout class="QGridLayout" name="gridLayout_5">
+      <property name="topMargin">
+       <number>0</number>
+      </property>
+      <item row="0" column="2">
+       <spacer name="horizontalSpacer_2">
+        <property name="orientation">
+         <enum>Qt::Horizontal</enum>
+        </property>
+        <property name="sizeHint" stdset="0">
+         <size>
+          <width>40</width>
+          <height>20</height>
+         </size>
+        </property>
+       </spacer>
+      </item>
+      <item row="0" column="1">
+       <widget class="QLineEdit" name="le_dac">
+        <property name="enabled">
+         <bool>true</bool>
+        </property>
+        <property name="readOnly">
+         <bool>true</bool>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="7">
+       <widget class="QLineEdit" name="le_experiment">
+        <property name="enabled">
+         <bool>true</bool>
+        </property>
+        <property name="readOnly">
+         <bool>true</bool>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="10">
+       <widget class="QLineEdit" name="le_machine">
+        <property name="readOnly">
+         <bool>true</bool>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="6">
+       <widget class="QLabel" name="label_21">
+        <property name="text">
+         <string>Experiment</string>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="0">
+       <widget class="QLabel" name="label_20">
+        <property name="text">
+         <string>DAC </string>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="9">
+       <widget class="QLabel" name="label_22">
+        <property name="text">
+         <string>Machine</string>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="8">
+       <spacer name="horizontalSpacer">
+        <property name="orientation">
+         <enum>Qt::Horizontal</enum>
+        </property>
+        <property name="sizeHint" stdset="0">
+         <size>
+          <width>20</width>
+          <height>20</height>
+         </size>
+        </property>
+       </spacer>
+      </item>
+     </layout>
+    </item>
     <item>
      <widget class="QTabWidget" name="tabWidget">
       <property name="currentIndex">
@@ -39,230 +135,26 @@
           <item>
            <layout class="QHBoxLayout" name="settings">
             <item>
-             <layout class="QVBoxLayout" name="left">
-              <item>
-               <spacer name="verticalSpacer_5">
-                <property name="orientation">
-                 <enum>Qt::Vertical</enum>
-                </property>
-                <property name="sizeHint" stdset="0">
-                 <size>
-                  <width>20</width>
-                  <height>40</height>
-                 </size>
-                </property>
-               </spacer>
-              </item>
-              <item>
-               <widget class="QPushButton" name="button_calibration_load_settings">
-                <property name="text">
-                 <string>Load Settings</string>
-                </property>
-               </widget>
-              </item>
-              <item>
-               <widget class="QPushButton" name="button_edit_settings">
-                <property name="text">
-                 <string>Edit Settings</string>
-                </property>
-               </widget>
-              </item>
-              <item>
-               <layout class="QGridLayout" name="gridLayout">
-                <item row="2" column="1" alignment="Qt::AlignHCenter">
-                 <widget class="QLabel" name="label_7">
-                  <property name="text">
-                   <string>Å</string>
-                  </property>
-                 </widget>
-                </item>
-                <item row="1" column="3">
-                 <widget class="QLabel" name="label_15">
-                  <property name="text">
-                   <string>±</string>
-                  </property>
-                 </widget>
-                </item>
-                <item row="2" column="3">
-                 <widget class="QLabel" name="label_16">
-                  <property name="text">
-                   <string>±</string>
-                  </property>
-                 </widget>
-                </item>
-                <item row="1" column="1" alignment="Qt::AlignHCenter">
-                 <widget class="QLabel" name="label_6">
-                  <property name="text">
-                   <string>nm</string>
-                  </property>
-                 </widget>
-                </item>
-                <item row="3" column="2">
-                 <widget class="QLineEdit" name="le_calibration">
-                  <property name="readOnly">
-                   <bool>true</bool>
-                  </property>
-                 </widget>
-                </item>
-                <item row="2" column="0">
-                 <widget class="QLabel" name="label_3">
-                  <property name="text">
-                   <string>Mirror Spacing</string>
-                  </property>
-                 </widget>
-                </item>
-                <item row="0" column="3">
-                 <widget class="QLabel" name="label_14">
-                  <property name="text">
-                   <string>±</string>
-                  </property>
-                 </widget>
-                </item>
-                <item row="1" column="0">
-                 <widget class="QLabel" name="label">
-                  <property name="toolTip">
-                   <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Laserwavelength of the exitation laser used in the experiment. &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-                  </property>
-                  <property name="text">
-                   <string>Laser Wavelength</string>
-                  </property>
-                 </widget>
-                </item>
-                <item row="3" column="3">
-                 <widget class="QLabel" name="label_17">
-                  <property name="text">
-                   <string>±</string>
-                  </property>
-                 </widget>
-                </item>
-                <item row="1" column="2">
-                 <widget class="QLineEdit" name="le_wavelength">
-                  <property name="readOnly">
-                   <bool>true</bool>
-                  </property>
-                 </widget>
-                </item>
-                <item row="1" column="4">
-                 <widget class="QLineEdit" name="le_wavelength_unc">
-                  <property name="readOnly">
-                   <bool>true</bool>
-                  </property>
-                 </widget>
-                </item>
-                <item row="3" column="4">
-                 <widget class="QLineEdit" name="le_calibration_unc">
-                  <property name="readOnly">
-                   <bool>true</bool>
-                  </property>
-                 </widget>
-                </item>
-                <item row="0" column="2">
-                 <widget class="QLineEdit" name="le_angle">
-                  <property name="enabled">
-                   <bool>true</bool>
-                  </property>
-                  <property name="readOnly">
-                   <bool>true</bool>
-                  </property>
-                 </widget>
-                </item>
-                <item row="3" column="0">
-                 <widget class="QLabel" name="label_4">
-                  <property name="text">
-                   <string>Calibration</string>
-                  </property>
-                 </widget>
-                </item>
-                <item row="2" column="4">
-                 <widget class="QLineEdit" name="le_spacing_unc">
-                  <property name="readOnly">
-                   <bool>true</bool>
-                  </property>
-                 </widget>
-                </item>
-                <item row="2" column="2">
-                 <widget class="QLineEdit" name="le_spacing">
-                  <property name="readOnly">
-                   <bool>true</bool>
-                  </property>
-                 </widget>
-                </item>
-                <item row="0" column="1" alignment="Qt::AlignHCenter">
-                 <widget class="QLabel" name="label_5">
-                  <property name="text">
-                   <string>°</string>
-                  </property>
-                 </widget>
-                </item>
-                <item row="3" column="1" alignment="Qt::AlignHCenter">
-                 <widget class="QLabel" name="label_8">
-                  <property name="text">
-                   <string>Ch</string>
-                  </property>
-                 </widget>
-                </item>
-                <item row="0" column="4">
-                 <widget class="QLineEdit" name="le_angle_unc">
-                  <property name="readOnly">
-                   <bool>true</bool>
-                  </property>
-                 </widget>
-                </item>
-                <item row="0" column="0">
-                 <widget class="QLabel" name="label_2">
-                  <property name="text">
-                   <string>Scattering angle</string>
-                  </property>
-                 </widget>
-                </item>
-                <item row="4" column="2">
-                 <spacer name="verticalSpacer_6">
-                  <property name="orientation">
-                   <enum>Qt::Vertical</enum>
-                  </property>
-                  <property name="sizeHint" stdset="0">
-                   <size>
-                    <width>20</width>
-                    <height>40</height>
-                   </size>
-                  </property>
-                 </spacer>
-                </item>
-               </layout>
-              </item>
-             </layout>
-            </item>
-            <item>
              <layout class="QVBoxLayout" name="center">
               <item>
-               <spacer name="verticalSpacer_2">
-                <property name="orientation">
-                 <enum>Qt::Vertical</enum>
-                </property>
-                <property name="sizeHint" stdset="0">
+               <widget class="QPushButton" name="button_load_calibration">
+                <property name="minimumSize">
                  <size>
-                  <width>20</width>
-                  <height>40</height>
+                  <width>300</width>
+                  <height>0</height>
                  </size>
                 </property>
-               </spacer>
-              </item>
-              <item>
-               <widget class="QPushButton" name="button_load_calibration">
                 <property name="text">
-                 <string>Load Calibration</string>
+                 <string>Load Calibration File</string>
                 </property>
                </widget>
               </item>
               <item>
-               <widget class="QLabel" name="label_18">
-                <property name="text">
-                 <string>Loaded File:</string>
+               <widget class="QLineEdit" name="le_calibration_data">
+                <property name="readOnly">
+                 <bool>true</bool>
                 </property>
                </widget>
-              </item>
-              <item>
-               <widget class="QLineEdit" name="le_calibration_data"/>
               </item>
               <item>
                <layout class="QGridLayout" name="gridLayout_2">
@@ -326,36 +218,146 @@
                 </property>
                </widget>
               </item>
+             </layout>
+            </item>
+            <item>
+             <layout class="QVBoxLayout" name="left">
               <item>
-               <spacer name="verticalSpacer">
-                <property name="orientation">
-                 <enum>Qt::Vertical</enum>
-                </property>
-                <property name="sizeHint" stdset="0">
-                 <size>
-                  <width>20</width>
-                  <height>40</height>
-                 </size>
-                </property>
-               </spacer>
+               <layout class="QGridLayout" name="gridLayout">
+                <item row="3" column="5">
+                 <widget class="QLineEdit" name="le_calfactor_unc">
+                  <property name="readOnly">
+                   <bool>true</bool>
+                  </property>
+                 </widget>
+                </item>
+                <item row="2" column="1" alignment="Qt::AlignHCenter">
+                 <widget class="QLabel" name="label_8">
+                  <property name="text">
+                   <string>Ch</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="0" column="1" alignment="Qt::AlignHCenter">
+                 <widget class="QLabel" name="label_7">
+                  <property name="text">
+                   <string>#</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="0" column="5">
+                 <widget class="QPushButton" name="button_run_calibration">
+                  <property name="text">
+                   <string>Run Calibration</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="2" column="0">
+                 <widget class="QLabel" name="label_4">
+                  <property name="text">
+                   <string>Calibration</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="2" column="2">
+                 <widget class="QLineEdit" name="le_calibration">
+                  <property name="readOnly">
+                   <bool>true</bool>
+                  </property>
+                 </widget>
+                </item>
+                <item row="0" column="0">
+                 <widget class="QLabel" name="label_3">
+                  <property name="text">
+                   <string>OD</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="3" column="0">
+                 <widget class="QLabel" name="label">
+                  <property name="text">
+                   <string>Calibration Factor</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="3" column="1">
+                 <widget class="QLabel" name="label_2">
+                  <property name="text">
+                   <string>cm-1/Ch</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="2" column="3">
+                 <widget class="QLabel" name="label_17">
+                  <property name="text">
+                   <string>±</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="3" column="3">
+                 <widget class="QLabel" name="label_5">
+                  <property name="text">
+                   <string>±</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="2" column="5">
+                 <widget class="QLineEdit" name="le_calibration_unc">
+                  <property name="readOnly">
+                   <bool>true</bool>
+                  </property>
+                 </widget>
+                </item>
+                <item row="0" column="2">
+                 <widget class="QSpinBox" name="spinBox_OD">
+                  <property name="value">
+                   <number>1</number>
+                  </property>
+                 </widget>
+                </item>
+                <item row="1" column="0">
+                 <widget class="QLabel" name="label_6">
+                  <property name="text">
+                   <string>Mirror Spacing</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="3" column="2">
+                 <widget class="QLineEdit" name="le_calfactor">
+                  <property name="readOnly">
+                   <bool>true</bool>
+                  </property>
+                 </widget>
+                </item>
+                <item row="1" column="1">
+                 <widget class="QLabel" name="label_14">
+                  <property name="text">
+                   <string>nm</string>
+                  </property>
+                  <property name="alignment">
+                   <set>Qt::AlignCenter</set>
+                  </property>
+                 </widget>
+                </item>
+                <item row="1" column="2">
+                 <widget class="QLineEdit" name="le_spacing"/>
+                </item>
+                <item row="1" column="5">
+                 <widget class="QLineEdit" name="le_spacing_unc"/>
+                </item>
+                <item row="1" column="3">
+                 <widget class="QLabel" name="label_15">
+                  <property name="text">
+                   <string>±</string>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
               </item>
              </layout>
             </item>
             <item>
              <layout class="QVBoxLayout" name="right">
-              <item>
-               <spacer name="verticalSpacer_3">
-                <property name="orientation">
-                 <enum>Qt::Vertical</enum>
-                </property>
-                <property name="sizeHint" stdset="0">
-                 <size>
-                  <width>20</width>
-                  <height>40</height>
-                 </size>
-                </property>
-               </spacer>
-              </item>
               <item>
                <widget class="QPushButton" name="button_export">
                 <property name="enabled">
@@ -376,19 +378,6 @@
                 </property>
                </widget>
               </item>
-              <item>
-               <spacer name="verticalSpacer_4">
-                <property name="orientation">
-                 <enum>Qt::Vertical</enum>
-                </property>
-                <property name="sizeHint" stdset="0">
-                 <size>
-                  <width>20</width>
-                  <height>40</height>
-                 </size>
-                </property>
-               </spacer>
-              </item>
              </layout>
             </item>
            </layout>
@@ -402,7 +391,7 @@
             <property name="minimumSize">
              <size>
               <width>0</width>
-              <height>600</height>
+              <height>550</height>
              </size>
             </property>
             <property name="toolTipDuration">
@@ -514,13 +503,6 @@
               </item>
              </layout>
             </item>
-            <item>
-             <widget class="QPushButton" name="button_run_calibration">
-              <property name="text">
-               <string>Run Calibration</string>
-              </property>
-             </widget>
-            </item>
            </layout>
           </item>
          </layout>
@@ -551,7 +533,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>1039</width>
+     <width>971</width>
      <height>24</height>
     </rect>
    </property>
@@ -560,9 +542,75 @@
      <string>Help</string>
     </property>
    </widget>
+   <widget class="QMenu" name="menuAdditional_Features">
+    <property name="title">
+     <string>Additional Features</string>
+    </property>
+    <addaction name="actionCalibration_Statistics"/>
+    <addaction name="actionOpen_Log_Window"/>
+   </widget>
+   <widget class="QMenu" name="menuNew">
+    <property name="title">
+     <string>New / Edit</string>
+    </property>
+    <addaction name="actionCreate_New_DAC"/>
+    <addaction name="actionCreate_New_Experiment"/>
+    <addaction name="actionEdit_DAC"/>
+    <addaction name="actionEdit_Experiment"/>
+   </widget>
    <addaction name="menuHelp"/>
+   <addaction name="menuAdditional_Features"/>
+   <addaction name="menuNew"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
+  <action name="actionCalibration_Statistics">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="text">
+    <string>Calibration Statistics</string>
+   </property>
+  </action>
+  <action name="actionOpen_Log_Window">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="text">
+    <string>Open Log Window</string>
+   </property>
+  </action>
+  <action name="actionCreate_New_DAC">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="text">
+    <string>Create New DAC</string>
+   </property>
+  </action>
+  <action name="actionCreate_New_Experiment">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="text">
+    <string>Create New Experiment</string>
+   </property>
+  </action>
+  <action name="actionEdit_DAC">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="text">
+    <string>Edit DAC</string>
+   </property>
+  </action>
+  <action name="actionEdit_Experiment">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="text">
+    <string>Edit Experiment</string>
+   </property>
+  </action>
  </widget>
  <customwidgets>
   <customwidget>
@@ -574,22 +622,13 @@
  </customwidgets>
  <tabstops>
   <tabstop>tabWidget</tabstop>
-  <tabstop>button_calibration_load_settings</tabstop>
-  <tabstop>button_edit_settings</tabstop>
   <tabstop>button_load_calibration</tabstop>
   <tabstop>le_calibration_data</tabstop>
   <tabstop>sB_numpeaks</tabstop>
   <tabstop>cBox_peakfunction</tabstop>
   <tabstop>button_start_fit</tabstop>
-  <tabstop>button_run_calibration</tabstop>
   <tabstop>button_export</tabstop>
   <tabstop>button_reset</tabstop>
-  <tabstop>le_angle</tabstop>
-  <tabstop>le_angle_unc</tabstop>
-  <tabstop>le_wavelength</tabstop>
-  <tabstop>le_wavelength_unc</tabstop>
-  <tabstop>le_spacing</tabstop>
-  <tabstop>le_spacing_unc</tabstop>
   <tabstop>le_calibration</tabstop>
   <tabstop>le_calibration_unc</tabstop>
   <tabstop>le_pos_d1</tabstop>
