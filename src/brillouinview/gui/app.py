@@ -121,8 +121,11 @@ class BrillouinViewApp(QMainWindow):
 
         self.cal_fit_window = CalibrationFitWindow(self.calibration_setup)
         self.cal_fit_window.start_fit_window()
-        self.cal_fit_window.sig.connect(self.apply_new_setup_calfit)
-        self.cal_fit_window.show()
+
+        if not self.cal_fit_window.aborted:
+            self.cal_fit_window.sig.connect(self.apply_new_setup_calfit)
+            self.cal_fit_window.show()
+
 
     def apply_new_setup_calfit(self, new_setup):
         self.calibration_setup = new_setup

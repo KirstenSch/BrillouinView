@@ -29,6 +29,7 @@ class CalibrationFitWindow(QDialog):
         self.ui_calplot.fit_plot.setLabel('left', 'Counts', size=14)
         self.ui_calplot.fit_plot.setLabel('bottom', 'Channel', size=14)
         self.ui_calplot.fit_plot.showGrid(x=True, y=True)
+        self.aborted = False
         self.experiment_setup = experiment_setup
         self.file_path = self.experiment_setup.calibration_file_path
         self.peak_number = self.experiment_setup.calibration_peak_number
@@ -65,8 +66,20 @@ class CalibrationFitWindow(QDialog):
         )
         self.worker.finished.connect(self.on_fitting_done)
         self.worker.error.connect(self.on_fitting_error)
+        self.worker.aborted.connect(self.on_fitting_aborted)  # new
+
+        self.wait_dialog.abort_requested.connect(self.worker.abort)  # <-- directly calls abort()
+        self.worker.finished.connect(self.wait_dialog.accept)
+        self.worker.error.connect(self.wait_dialog.reject)
+        self.worker.aborted.connect(self.wait_dialog.reject)  # close dialog on abort too
+
         self.worker.start()
         self.wait_dialog.exec_()  # blocks interaction with main window until dialog is closed
+
+    def on_fitting_aborted(self):
+        # Handle UI cleanup after abort — e.g. re-enable buttons, show a status message
+        self.aborted = True
+        self.close()
 
     def on_fitting_done(self, result):
         self.results = result
@@ -75,6 +88,7 @@ class CalibrationFitWindow(QDialog):
         self.populate_fit_results_table()
 
     def on_fitting_error(self, error_msg):
+        self.aborted = True
         self.wait_dialog.accept()
         QMessageBox.critical(self, "Error", f"Failed to fit peaks: {error_msg}")
 
@@ -341,13 +355,28 @@ class CalibrationFitWindow(QDialog):
         filename = save_directory + f"/{dat_name}_fit_screenshot.png"
         screenshot.save(filename, "PNG")
 
+import multiprocessing as mp
+from PyQt5.QtCore import QThread, pyqtSignal
+
+def _fit_in_process(queue, calibration_data, peak_number, peak_function, starting_params):
+    """Runs in a separate process — can be killed at any time."""
+    try:
+        result = fit_peaks(
+            calibration_data,
+            n_peaks=peak_number,
+            column="intensity",
+            peak_function=peak_function,
+            **({"starting_params": starting_params} if starting_params is not None else {})
+        )
+        queue.put(("finished", result))
+    except Exception as e:
+        queue.put(("error", str(e)))
+
+
 class FittingWorker(QThread):
-    # Todo:
-    # Add Abort Button to Wait window. (Stop Thread and return to main window)
-    # Add maximum number of iterations. If Fitting finished withput sucesss, plot anyway and tell operator to give besser starting parameters.
-    
     finished = pyqtSignal(object)
     error = pyqtSignal(str)
+    aborted = pyqtSignal()  # new signal
 
     def __init__(self, calibration_data, peak_number, peak_function, starting_params=None):
         super().__init__()
@@ -355,16 +384,32 @@ class FittingWorker(QThread):
         self.peak_number = peak_number
         self.peak_function = peak_function
         self.starting_params = starting_params
+        self._process = None
 
     def run(self):
-        try:
-            result = fit_peaks(
-                self.calibration_data,
-                n_peaks=self.peak_number,
-                column="intensity",
-                peak_function=self.peak_function,
-                **({"starting_params": self.starting_params} if self.starting_params is not None else {})
-            )
-            self.finished.emit(result)
-        except Exception as e:
-            self.error.emit(str(e))
+        queue = mp.Queue()
+        self._process = mp.Process(
+            target=_fit_in_process,
+            args=(queue, self.calibration_data, self.peak_number,
+                  self.peak_function, self.starting_params),
+            daemon=True
+        )
+        self._process.start()
+        self._process.join()  # blocks this thread until process finishes or is aborted
+
+        if not self._process.exitcode == 0:
+            # Process was killed via abort() — exit silently
+            self.aborted.emit()
+            return
+
+        status, payload = queue.get()
+        if status == "finished":
+            self.finished.emit(payload)
+        else:
+            self.error.emit(payload)
+
+    def abort(self):
+        """Called from the main thread via the Abort button."""
+        if self._process and self._process.is_alive():
+            self._process.terminate()
+            self._process.join()
