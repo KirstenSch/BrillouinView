@@ -93,6 +93,18 @@ class BrillouinViewApp(QMainWindow):
         # Add Filename to table
         self.ui.le_calibration_data.setText(str(self.calibration_filepath))
 
+        # Clear previous fit results
+        self.ui.le_pos_d1.clear()
+        self.ui.le_pos_d2.clear()
+        self.ui.le_pos_d3.clear()
+        self.ui.le_calibration.clear()
+        self.ui.le_calibration_unc.clear()
+        self.ui.le_calfactor.clear()
+        self.ui.le_calfactor_unc.clear()
+        self.ui.button_run_calibration.setEnabled(False)
+        self.ui.button_run_calibration.setStyleSheet("")  # Reset to default style
+        self.ui.button_export.setEnabled(False)
+
         # Enable the fit button
         self.ui.button_start_fit.setEnabled(True)
 
@@ -129,42 +141,19 @@ class BrillouinViewApp(QMainWindow):
         self.plot_calibration_peaks()
         self.ui.button_run_calibration.setEnabled(True)
         self.ui.button_run_calibration.setStyleSheet("background-color: red; color: white;")
-        self.ui.cBox_peakfunction.setCurrentText(self.experiment_setup.calibration_peak_function)
+        self.ui.cBox_peakfunction.setCurrentText(self.calibration_setup.calibration_peak_function)
 
     def plot_calibration_peaks(self):
-
-        """Add individual peaks from calibration parameters to the existing calibration plot"""
-        
-        if not hasattr(self, 'calibration_data') or self.calibration_data is None:
-            return
-        
-        if not hasattr(self.calibration_setup, 'calibration_peak_parameters') or not self.calibration_setup.calibration_peak_parameters:
-            return
-        
-        # Define specific colors for up to 3 peaks
-        peak_colors = ['r', 'b', 'm']  # Red, Blue, Magenta
-        
-        # Get x values for plotting
-        x_values = self.calibration_data.index.values
-        
-        # Plot each individual peak
-        for i, peak in enumerate(self.calibration_setup.calibration_peak_parameters):
-            amp = nominal(peak.get("amplitude", 0.0))
-            cen = nominal(peak.get("center", 0.0))
-            sig = nominal(peak.get("sigma", 1.0))
-            
-            # Calculate individual Gaussian (assuming baseline is 0 or extract from somewhere)
-            baseline = nominal(self.calibration_setup.calibration_background) if hasattr(self.calibration_setup, 'calibration_background') else 0.0
-            individual = baseline + gaussian(x_values, amp, cen, sig)
-            
-            # Use predefined colors
-            color = peak_colors[i] if i < len(peak_colors) else pg.intColor(i, hues=6)
-            pen_peak = pg.mkPen(color=color, width=1.5, style=Qt.SolidLine)
-            self.ui.graph.plot(
-                x_values,
-                individual,
-                pen=pen_peak
-            )
+        cal_data = self.calibration_data
+        results = self.calibration_setup
+        baseline = nominal(self.calibration_setup.calibration_background) if hasattr(self.calibration_setup, 'calibration_background') else 0.0
+        plotter = PeakPlotter(self.ui.graph, cal_data, results)
+        plotter.clear()
+        plotter.setup_axes()
+        plotter.plot_raw_data()
+        plotter.plot_individual_peaks(baseline=baseline)
+        plotter.plot_baseline(baseline=baseline)
+        self.ui.graph.show()
 
     def calculate_calibration(self):
 
@@ -197,6 +186,7 @@ class BrillouinViewApp(QMainWindow):
         self.ui.le_calfactor.setText(f"{self.calibration_setup.calibration_factor:.6e}")
         self.ui.le_calfactor_unc.setText(f"{self.calibration_setup.calibration_factor_unc:.6e}")
         self.ui.button_export.setEnabled(True)
+        self.ui.button_run_calibration.setStyleSheet("")
 
     def calculate_channel_bshift_factor(self) -> float:
         # Calculate the Factor to be multiplied with the Brillouin Shift in Channels to get the Shift as a Frequency
