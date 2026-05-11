@@ -63,7 +63,11 @@ class SampleParameters:
 
 @dataclass
 class SpectrumParameters:
+    spectrum_CalibrationFactor: CalibrationParameters = None
     spectrum_file_path: Path = None
     spectrum_date: date = None
     spectrum_experiment: ExperimentParameters = None
     spectrum_sample: SampleParameters = None
+    spectrum_chi: float = None
+    spectrum_chi_unc: float = None
+    
