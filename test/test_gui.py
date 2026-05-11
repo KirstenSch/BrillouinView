@@ -529,7 +529,6 @@ class TestWithQtApp:
             mock_ui.return_value = MagicMock()
             self.window = BrillouinViewApp
         yield
-        self.window.destroy()
 
     def test_calculate_channel_bshift_factor(self):
         self.window.calibration_setup = CalibrationParameters(
