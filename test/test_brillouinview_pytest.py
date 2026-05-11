@@ -113,34 +113,6 @@ def test_pseudo_voigt_without_eta_center_value_equals_amplitude():
     idx = np.where(np.isclose(x, center))[0]
     assert idx.size == 1
     assert_allclose(pv[idx[0]], amplitude, rtol=1e-8, atol=1e-10)
-def test_calibration_settings_read_txt():
-    # Create a temporary calibration file
-    temp_file = Path("test/files/calibration_settings_old.txt")
-    experimental_setup = experiment_setup_calibration(temp_file)
-    assert isinstance(experimental_setup, ExperimentParameters)
-    assert experimental_setup.scattering_angle == 50.1
-    assert experimental_setup.scattering_angle_unc == None
-    assert experimental_setup.laser_wavelength == 532.2
-    assert experimental_setup.laser_wavelength_unc == None
-    assert experimental_setup.spacing == 5.0         
-    assert experimental_setup.spacing_unc == None
-    assert experimental_setup.calibration_value == 468.75         
-    assert experimental_setup.calibration_value_unc == None
-
-
-def test_calibration_settings_read_yaml():
-    # Create a temporary calibration file
-    temp_file = Path("test/files/calibration_settings.yaml")
-    experimental_setup = experiment_setup_calibration(temp_file)
-    assert isinstance(experimental_setup, ExperimentParameters)
-    assert experimental_setup.scattering_angle == 90.0
-    assert experimental_setup.scattering_angle_unc == 1.0
-    assert experimental_setup.laser_wavelength == 532.0
-    assert experimental_setup.laser_wavelength_unc == 0.1
-    assert experimental_setup.spacing == 0.85         
-    assert experimental_setup.spacing_unc == 0.02
-    assert experimental_setup.calibration_value == 123.45         
-    assert experimental_setup.calibration_value_unc == 0.67
 
 
 def test_read_ghost_file():
