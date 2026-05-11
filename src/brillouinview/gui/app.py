@@ -186,7 +186,7 @@ class BrillouinViewApp(QMainWindow):
         # Caluclate channel shift factor
         self.calibration_setup.calibration_OD = self.ui.spinBox_OD.value()
         self.calibration_setup.exp_machine_parameters = self.machine_parameters
-        self.calibration_setup.calibration_factor, self.calibration_setup.calibration_factor_unc = self.calculate_channel_bshift_factor()  # Assuming first order diffraction for now
+        self.calculate_channel_bshift_factor()  # Assuming first order diffraction for now
 
         # Update experiment setup and UI
         self.ui.le_calibration.setText(f"{self.calibration_setup.calibration_value:.6f}")
@@ -195,7 +195,7 @@ class BrillouinViewApp(QMainWindow):
         self.ui.le_calfactor_unc.setText(f"{self.calibration_setup.calibration_factor_unc:.6e}")
         self.ui.button_export.setEnabled(True)
 
-    def calculate_channel_bshift_factor(self) -> float:
+    def calculate_channel_bshift_factor(self):
         # Calculate the Factor to be multiplied with the Brillouin Shift in Channels to get the Shift as a Frequency
         # OD: Order of Diffraction
         # calibration_value: Calibration Value in Channels
@@ -208,8 +208,9 @@ class BrillouinViewApp(QMainWindow):
         
         speed_of_light = 299792458 # Speed of light in m/s
         calibration_factor = speed_of_light * OD / (2 * spacing * calibration_value)
+        self.calibration_setup.calibration_factor = calibration_factor.nominal_value
+        self.calibration_setup.calibration_factor_unc = calibration_factor.std_dev
         
-        return calibration_factor.nominal_value, calibration_factor.std_dev
 
     def reset_entires(self):
         """Reset all entries, plots, and experiment setup to initial state"""
