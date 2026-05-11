@@ -315,21 +315,4 @@ def test_two_random_dips_workflow(tmp_path):
         print(f"\nR² = {results['r_squared']:.6f}")
         print("="*60)
         print("✓ All parameters match within tolerance!")
-
-def test_calculation_calibration_factor():
-    exp_setup_test = ExperimentParameters()
-    exp_setup_test.calibration_value = 400.0
-    exp_setup_test.calibration_value_unc = 4.0
-    exp_setup_test.spacing = 300e-6
-    exp_setup_test.spacing_unc = 3e-6
-    OD = 1
-
-    calibration_factor = BrillouinViewApp.calculate_channel_bshift_factor(exp_setup_test, OD)
-
-    assert calibration_factor.nominal_value > 0
-    assert calibration_factor.std_dev > 0
-    
-    expected_value_external = 1.249135241e9
-    
-    # Assert both nominal values are close to expected_value_external
-    assert abs(calibration_factor.nominal_value - expected_value_external) / expected_value_external < 1e-6  # relative tolerance
+        

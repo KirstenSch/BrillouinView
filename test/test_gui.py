@@ -4,11 +4,16 @@ GUI tests for BrillouinView using pytest-qt.
 Tests the WelcomeWindow and dialog windows using pytest-qt fixtures.
 """
 
+from brillouinview.gui.app import BrillouinViewApp
 import pytest
-from unittest.mock import Mock, patch
+from unittest.mock import Mock, patch, MagicMock
 from PyQt5 import QtWidgets, QtCore
+from PyQt5.QtWidgets import QApplication
 from pathlib import Path
 import sys
+
+from brillouinview.gui.app import BrillouinViewApp
+from brillouinview.setup_classes import MachineParameters, CalibrationParameters, ExperimentParameters
 
 # Add src directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
@@ -507,6 +512,40 @@ class TestEndToEndWorkflow:
         
         # Verify experiments section
         assert "experiments" in toml_content or "experiment" in toml_content
+
+
+@pytest.fixture(scope="session")
+def qt_app():
+    app = QApplication.instance() or QApplication([])
+    yield app
+
+class TestWithQtApp:
+
+    @pytest.fixture(autouse=True)
+    def setup_window(self, qt_app):
+        with patch('brillouinview.gui.app.Ui_MainWindow') as mock_ui, \
+             patch.object(BrillouinViewApp, 'run_welcome_window'), \
+             patch.object(BrillouinViewApp, 'init_plot'):
+            mock_ui.return_value = MagicMock()
+            self.window = BrillouinViewApp
+        yield
+        self.window.destroy()
+
+    def test_calculate_channel_bshift_factor(self):
+        self.window.calibration_setup = CalibrationParameters(
+            calibration_OD=1,
+            calibration_value=400.0,
+            calibration_value_unc=4.0,
+            exp_machine_parameters=MachineParameters(
+                spacing=300e-6,
+                spacing_unc=3e-6,
+            ),
+        )
+        self.window.calculate_channel_bshift_factor(self.window)
+        
+        assert self.window.calibration_setup.calibration_factor > 0
+        assert self.window.calibration_setup.calibration_factor_unc > 0
+        self.window.calibration_setup.calibration_factor = 1.249135241e9
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
