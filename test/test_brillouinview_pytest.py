@@ -11,8 +11,9 @@ from numpy.testing import assert_allclose
 
 from brillouinview.fitting_algorithm import voigt, pseudo_voigt, gaussian, lorentzian
 # Test reading calibration settings from a file
-from brillouinview.calibration import ExperimentSetup, calculate_channel_bshift_factor, ExperimentSetupPublic
-from brillouinview.io_fileparsing import experiment_setup_calibration, read_ghost_file
+from brillouinview.gui.app import BrillouinViewApp
+from brillouinview.setup_classes import ExperimentParameters
+from brillouinview.io_fileparsing import read_ghost_file
 from brillouinview.fitting_algorithm import fit_peaks, gaussian
 
 
@@ -116,7 +117,7 @@ def test_calibration_settings_read_txt():
     # Create a temporary calibration file
     temp_file = Path("test/files/calibration_settings_old.txt")
     experimental_setup = experiment_setup_calibration(temp_file)
-    assert isinstance(experimental_setup, ExperimentSetupPublic)
+    assert isinstance(experimental_setup, ExperimentParameters)
     assert experimental_setup.scattering_angle == 50.1
     assert experimental_setup.scattering_angle_unc == None
     assert experimental_setup.laser_wavelength == 532.2
@@ -131,7 +132,7 @@ def test_calibration_settings_read_yaml():
     # Create a temporary calibration file
     temp_file = Path("test/files/calibration_settings.yaml")
     experimental_setup = experiment_setup_calibration(temp_file)
-    assert isinstance(experimental_setup, ExperimentSetupPublic)
+    assert isinstance(experimental_setup, ExperimentParameters)
     assert experimental_setup.scattering_angle == 90.0
     assert experimental_setup.scattering_angle_unc == 1.0
     assert experimental_setup.laser_wavelength == 532.0
@@ -344,14 +345,14 @@ def test_two_random_dips_workflow(tmp_path):
         print("✓ All parameters match within tolerance!")
 
 def test_calculation_calibration_factor():
-    exp_setup_test = ExperimentSetupPublic()
+    exp_setup_test = ExperimentParameters()
     exp_setup_test.calibration_value = 400.0
     exp_setup_test.calibration_value_unc = 4.0
     exp_setup_test.spacing = 300e-6
     exp_setup_test.spacing_unc = 3e-6
     OD = 1
 
-    calibration_factor = calculate_channel_bshift_factor(exp_setup_test, OD)
+    calibration_factor = BrillouinViewApp.calculate_channel_bshift_factor(exp_setup_test, OD)
 
     assert calibration_factor.nominal_value > 0
     assert calibration_factor.std_dev > 0
